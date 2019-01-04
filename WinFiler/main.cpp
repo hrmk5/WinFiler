@@ -1,5 +1,6 @@
 #include <Windows.h>
 #include <CommCtrl.h>
+#include "UI.h"
 
 HFONT guiFont;
 
@@ -9,15 +10,14 @@ bool CALLBACK SetFont(HWND child, LPARAM font) {
 }
 
 LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) {
+	static UI ui;
+
 	switch (msg) {
 	case WM_CREATE:
 	{
 		InitCommonControls();
 
-		HWND button = CreateWindow(
-			L"BUTTON", L"ƒ{ƒ^ƒ“", WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON,
-			100, 100, 100, 20,
-			hWnd, NULL, NULL, NULL);
+		ui.initialize(hWnd);
 		
 		NONCLIENTMETRICS metrics;
 		metrics.cbSize = sizeof(NONCLIENTMETRICS);
@@ -29,6 +29,12 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) {
 	case WM_DESTROY:
 		DeleteObject(guiFont);
 		PostQuitMessage(0);
+		return 0;
+	case WM_COMMAND:
+		ui.onCommand(LOWORD(wParam), HIWORD(wParam), lParam);
+		return 0;
+	case WM_SIZE:
+		ui.onResize(LOWORD(lParam), HIWORD(lParam));
 		return 0;
 	default:
 		return DefWindowProc(hWnd, msg, wParam, lParam);
@@ -65,5 +71,5 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 		DispatchMessage(&msg);
 	}
 
-	return msg.wParam;
+	return static_cast<int>(msg.wParam);
 }
