@@ -19,7 +19,9 @@ struct Entry {
 	std::wstring name;
 	std::wstring path;
 	long size;
+	std::wstring sizeStr;
 	SYSTEMTIME time;
+	std::wstring timeStr;
 };
 
 class UI {
@@ -29,6 +31,7 @@ public:
 
 	void initialize(HWND hWnd);
 	void onCommand(WORD id, WORD code, LPARAM lParam);
+	void onNotify(LPARAM lParam);
 	void onResize(int width, int height);
 
 	void changeDirectory(const std::wstring& directory);

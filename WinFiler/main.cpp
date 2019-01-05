@@ -35,6 +35,9 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) {
 	case WM_COMMAND:
 		ui.onCommand(LOWORD(wParam), HIWORD(wParam), lParam);
 		return 0;
+	case WM_NOTIFY:
+		ui.onNotify(lParam);
+		return 0;
 	case WM_SIZE:
 		ui.onResize(LOWORD(lParam), HIWORD(lParam));
 		return 0;
