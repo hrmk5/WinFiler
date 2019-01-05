@@ -4,6 +4,7 @@ UI::UI() {
 }
 
 UI::~UI() {
+	ImageList_Destroy(imageList);
 }
 
 constexpr int ID_PATHEDIT = 1;
@@ -65,6 +66,11 @@ void UI::onNotify(LPARAM lParam) {
 				ndi->item.pszText = &*entry->sizeStr.begin();
 			}
 		}
+		if (ndi->item.mask & LVIF_IMAGE) {
+			if (ndi->item.iSubItem == 0) {
+				ndi->item.iImage = ndi->item.iItem;
+			}
+		}
 	}
 }
 
@@ -78,9 +84,10 @@ void UI::changeDirectory(const std::wstring& directory) {
 	entries.clear();
 	ListView_DeleteAllItems(entryList);
 
-	LVITEM item;
-	item.mask = LVIF_TEXT;
 	int count = 0;
+
+	imageList = ImageList_Create(16, 16, ILC_COLOR32, 0, 0);
+	ListView_SetImageList(entryList, imageList, LVSIL_SMALL);
 
 	WIN32_FIND_DATA findData;
 	HANDLE hFind = FindFirstFile((L"\\\\?\\" + directory + L"\\*").c_str(), &findData);
@@ -107,9 +114,23 @@ void UI::changeDirectory(const std::wstring& directory) {
 			entry.timeStr = fmt::format(L"{}/{:0>2}/{:0>2} {:0>2}:{:0>2}",
 					entry.time.wYear, entry.time.wMonth, entry.time.wDay, entry.time.wHour, entry.time.wMinute, entry.time.wSecond);
 		}
+
+		// Get file icon
+		HICON icon;
+		if (entry.type == EntryType::DIRECTORY) {
+			SHSTOCKICONINFO sii;
+			sii.cbSize = sizeof(sii);
+			SHGetStockIconInfo(SIID_FOLDER, SHGSI_ICON | SHGSI_SMALLICON, &sii);
+			icon = sii.hIcon;
+		} else if (entry.type == EntryType::FILE) {
+			SHFILEINFO sfi;
+			SHGetFileInfo(entry.path.c_str(), FILE_ATTRIBUTE_NORMAL, &sfi, sizeof(sfi), SHGFI_ICON | SHGFI_SMALLICON);
+			icon = sfi.hIcon;
+		}
+
+		ImageList_AddIcon(imageList, icon);
+
 		entries.push_back(entry);
-
-
 		count++;
 	} while (FindNextFile(hFind, &findData));
 

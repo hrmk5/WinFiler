@@ -38,6 +38,7 @@ public:
 private:
 	int windowWidth, windowHeight;
 	HWND pathEdit, entryList;
+	HIMAGELIST imageList;
 
 	std::wstring currentDirectory;
 	std::vector<Entry> entries;
