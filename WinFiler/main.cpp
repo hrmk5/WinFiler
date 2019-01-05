@@ -15,7 +15,9 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) {
 	switch (msg) {
 	case WM_CREATE:
 	{
-		InitCommonControls();
+		INITCOMMONCONTROLSEX icex;
+		icex.dwICC = ICC_LISTVIEW_CLASSES;
+		InitCommonControlsEx(&icex);
 
 		ui.initialize(hWnd);
 		
