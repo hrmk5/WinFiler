@@ -29,20 +29,6 @@ void UI::initialize(HWND hWnd) {
 
 	onResize(windowWidth, windowHeight);
 
-	// Set entry list columns
-	/*std::wstring name[] = { L"ファイル名", L"最終更新日時", L"サイズ" };
-	int width[] = { 200, 200, 200 };
-
-	LVCOLUMN col;
-	col.mask = LVCF_FMT | LVCF_WIDTH | LVCF_TEXT | LVCF_SUBITEM;
-	col.fmt = LVCFMT_LEFT;
-	for (int i = 0; i < sizeof(name) / sizeof(name[0]); i++) {
-		col.cx = width[i];
-		col.pszText = &*name[i].begin();
-		col.iSubItem = i;
-		ListView_InsertColumn(entryList, i, &col);
-	}*/
-
 	changeDirectory(L"C:\\");
 }
 
@@ -76,8 +62,6 @@ void UI::changeDirectory(const std::wstring& directory) {
 
 		if (findData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) {
 			entry.type = EntryType::DIRECTORY;
-			//entry.timeStr = L"";
-			//entry.sizeStr = L"";
 		} else {
 			entry.type = EntryType::FILE;
 			// Size

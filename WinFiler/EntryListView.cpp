@@ -3,10 +3,11 @@
 constexpr int ROW_SPACE = 3;
 
 static void OnPaint(HWND hWnd, EntryListView_Data& data) {
+	// Get the window rect
 	RECT rect;
 	GetClientRect(hWnd, &rect);
 
-	// スクロールバーの情報を取得
+	// Get scroll info
 	SCROLLINFO si;
 	si.cbSize = sizeof(si);
 	si.fMask = SIF_POS | SIF_RANGE | SIF_PAGE;
@@ -14,9 +15,10 @@ static void OnPaint(HWND hWnd, EntryListView_Data& data) {
 
 	PAINTSTRUCT ps;
 	HDC hdc = BeginPaint(hWnd, &ps);
+	// Clear
 	FillRect(hdc, &rect, reinterpret_cast<HBRUSH>(COLOR_WINDOW + 1));
 
-	// フォントを設定
+	// Set font
 	SelectObject(hdc, data.font);
 
 	SetTextColor(hdc, RGB(0, 0, 0));
@@ -24,7 +26,7 @@ static void OnPaint(HWND hWnd, EntryListView_Data& data) {
 	int maxY = 0;
 	if (data.entries != nullptr) {
 		for (const auto& entry : *data.entries) {
-			// ファイル名を描画
+			// Draw file name
 			auto y = data.rowHeight * count - si.nPos;
 			RECT textRect = { 0, y, rect.right, y + data.rowHeight };
 			DrawText(hdc, entry.name.c_str(), -1, &textRect, DT_SINGLELINE | DT_VCENTER);
@@ -35,7 +37,7 @@ static void OnPaint(HWND hWnd, EntryListView_Data& data) {
 
 	EndPaint(hWnd, &ps);
 
-	// スクロールバー
+	// Scroll bar
 	si.nPage = rect.bottom;
 	si.nMax = maxY;
 	SetScrollInfo(hWnd, SB_VERT, &si, TRUE);
@@ -45,6 +47,7 @@ static LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lPara
 	auto data = reinterpret_cast<EntryListView_Data*>(GetWindowLongPtr(hWnd, 0));
 	switch (msg) {
 	case WM_NCCREATE:
+		// Initialize EntryListView_Data
 		data = new EntryListView_Data;
 		data->entries = nullptr;
 		data->height = 0;
@@ -56,6 +59,7 @@ static LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lPara
 		}
 		return 0;
 	case WM_CREATE:
+		// Initialize scroll info
 		SCROLLINFO si;
 		si.cbSize = sizeof(si);
 		si.fMask = SIF_POS | SIF_RANGE | SIF_PAGE;
@@ -65,12 +69,15 @@ static LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lPara
 		return 0;
 	case WM_VSCROLL:
 	{
+		// Get scroll info
 		SCROLLINFO si;
 		si.cbSize = sizeof(si);
 		si.fMask = SIF_POS | SIF_RANGE | SIF_PAGE;
 		GetScrollInfo(hWnd, SB_VERT, &si);
 
+		// Scroll amount
 		int dy = 0;
+
 		switch (LOWORD(wParam)) {
 		case SB_LINEUP:
 			dy = -data->rowHeight;
@@ -94,7 +101,7 @@ static LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lPara
 		}
 
 		SetScrollPos(hWnd, SB_VERT, si.nPos + dy, TRUE);
-		// 画面を更新
+		// Repaint
 		InvalidateRect(hWnd, NULL, TRUE);
 		return 0;
 	}
@@ -110,7 +117,7 @@ static LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lPara
 		dy = delta / 120 * -(data->rowHeight * 2);
 
 		SetScrollPos(hWnd, SB_VERT, si.nPos + dy, TRUE);
-		// 画面を更新
+		// Repaint
 		InvalidateRect(hWnd, NULL, TRUE);
 		return 0;
 	}
@@ -119,14 +126,13 @@ static LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lPara
 		return 0;
 	case WM_SETFONT:
 	{
-		// フォント
 		data->font = reinterpret_cast<HFONT>(wParam);
-		// フォントの高さを取得
+		// Get font height
 		auto hdc = GetDC(hWnd);
 		SelectObject(hdc, data->font);
 		TEXTMETRIC metrics;
 		GetTextMetrics(hdc, &metrics);
-		// 列の高さを計算
+		// Calculate row height
 		data->rowHeight = metrics.tmHeight + ROW_SPACE;
 		return 0;
 	}
