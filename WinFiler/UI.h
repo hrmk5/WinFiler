@@ -8,21 +8,7 @@
 #include <Uxtheme.h>
 #include <Shlwapi.h>
 #include <fmt/format.h>
-
-enum class EntryType {
-	DIRECTORY,
-	FILE,
-};
-
-struct Entry {
-	EntryType type;
-	std::wstring name;
-	std::wstring path;
-	long size;
-	std::wstring sizeStr;
-	SYSTEMTIME time;
-	std::wstring timeStr;
-};
+#include "EntryListView.h"
 
 class UI {
 public:
@@ -37,7 +23,7 @@ public:
 	void changeDirectory(const std::wstring& directory);
 private:
 	int windowWidth, windowHeight;
-	HWND pathEdit, entryList;
+	HWND pathEdit, entryListView;
 	HIMAGELIST imageList;
 
 	std::wstring currentDirectory;

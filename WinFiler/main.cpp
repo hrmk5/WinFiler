@@ -62,6 +62,8 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 	wcex.hIconSm = LoadIcon(NULL, IDI_APPLICATION);
 	RegisterClassEx(&wcex);
 
+	EntryListView_Register();
+
 	HWND window = CreateWindow(
 		wcex.lpszClassName, L"WinFiler", WS_OVERLAPPEDWINDOW,
 		CW_USEDEFAULT, CW_USEDEFAULT, 680, 480,
@@ -75,6 +77,8 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 		TranslateMessage(&msg);
 		DispatchMessage(&msg);
 	}
+
+	UnregisterClass(WC_ENTRYLISTVIEW, NULL);
 
 	return static_cast<int>(msg.wParam);
 }
