@@ -19,7 +19,11 @@ static void OnPaint(HWND hWnd, EntryListView_Data& data) {
 	ScreenToClient(hWnd, &cursorPos);
 
 	PAINTSTRUCT ps;
-	HDC hdc = BeginPaint(hWnd, &ps);
+	HDC _hdc = BeginPaint(hWnd, &ps);
+	HDC hdc = CreateCompatibleDC(_hdc);
+	HBITMAP bitmap = CreateCompatibleBitmap(_hdc, rect.right, rect.bottom);
+	SelectObject(hdc, bitmap);
+
 	FillRect(hdc, &rect, reinterpret_cast<HBRUSH>(COLOR_WINDOW + 1));
 
 	// ÉtÉHÉìÉgÇê›íË
@@ -45,6 +49,11 @@ static void OnPaint(HWND hWnd, EntryListView_Data& data) {
 		}
 		maxY = data.rowHeight * count;
 	}
+
+	BitBlt(_hdc, 0, 0, rect.right, rect.bottom, hdc, 0, 0, SRCCOPY);
+
+	DeleteObject(bitmap);
+	DeleteDC(hdc);
 
 	EndPaint(hWnd, &ps);
 
@@ -72,6 +81,7 @@ static LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lPara
 		}
 		return 0;
 	case WM_CREATE:
+	{
 		// SCROLLINFO Çèâä˙âª
 		SCROLLINFO si;
 		si.cbSize = sizeof(si);
@@ -80,6 +90,7 @@ static LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lPara
 		si.nMin = 0;
 		SetScrollInfo(hWnd, SB_VERT, &si, FALSE);
 		return 0;
+	}
 	case WM_DESTROY:
 		return 0;
 	case WM_VSCROLL:
