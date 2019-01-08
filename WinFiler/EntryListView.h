@@ -3,6 +3,7 @@
 #include <vector>
 #include <tchar.h>
 #include <Windows.h>
+#include <windowsx.h>
 #include <fmt/format.h>
 #include "Entry.h"
 
@@ -33,7 +34,12 @@ private:
 	int height;
 	int rowHeight;
 
-	static LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
-
-	void OnPaint();
+	static LRESULT CALLBACK WndProc_(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
+	LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
+	BOOL OnCreate(HWND hWnd, LPCREATESTRUCT lpCreateStruct);
+	void OnVScroll(HWND hWnd, HWND hWndCtl, UINT code, int pos);
+	void OnMouseWheel(HWND hWnd, int xPos, int yPos, int zDelta, UINT fwKeys);
+	void OnMouseMove(HWND hWnd, int x, int y, UINT keyFlags);
+	void OnSetFont(HWND hWndCtl, HFONT hfont, BOOL fRedraw);
+	void OnPaint(HWND hWnd);
 };

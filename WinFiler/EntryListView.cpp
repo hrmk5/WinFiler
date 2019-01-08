@@ -18,7 +18,7 @@ void ListViewEx::Register() {
 	WNDCLASS wc;
 	ZeroMemory(&wc, sizeof(wc));
 	wc.style = CS_GLOBALCLASS | CS_HREDRAW | CS_VREDRAW;
-	wc.lpfnWndProc = ListViewEx::WndProc;
+	wc.lpfnWndProc = ListViewEx::WndProc_;
 	wc.lpszClassName = WC_ENTRYLISTVIEW;
 	wc.cbWndExtra = sizeof(ListViewEx*);
 	wc.hCursor = LoadCursor(NULL, IDC_ARROW);
@@ -33,105 +33,111 @@ void ListViewEx::Move(int x, int y, int width, int height, bool repaint) {
 	MoveWindow(hWnd, x, y, width, height, repaint);
 }
 
-LRESULT CALLBACK ListViewEx::WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) {
-	auto lv = reinterpret_cast<ListViewEx*>(GetWindowLongPtr(hWnd, 0));
-	switch (msg) {
-	case WM_CREATE:
-	{
+LRESULT CALLBACK ListViewEx::WndProc_(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) {
+	if (msg == WM_NCCREATE) {
 		LPCREATESTRUCT pcs = reinterpret_cast<LPCREATESTRUCT>(lParam);
-		lv = reinterpret_cast<ListViewEx*>(pcs->lpCreateParams);
+		auto lv = reinterpret_cast<ListViewEx*>(pcs->lpCreateParams);
 		SetWindowLongPtr(hWnd, 0, reinterpret_cast<LONG_PTR>(lv));
-
-		// SCROLLINFO を初期化
-		SCROLLINFO si;
-		si.cbSize = sizeof(si);
-		si.fMask = SIF_POS | SIF_RANGE | SIF_PAGE;
-		si.nPos = 0;
-		si.nMin = 0;
-		SetScrollInfo(hWnd, SB_VERT, &si, FALSE);
-		return 0;
+		return TRUE;
 	}
-	case WM_DESTROY:
-		return 0;
-	case WM_VSCROLL:
-	{
-		// 現在の SCROLLINFO を取得
-		SCROLLINFO si;
-		si.cbSize = sizeof(si);
-		si.fMask = SIF_POS | SIF_RANGE | SIF_PAGE;
-		GetScrollInfo(hWnd, SB_VERT, &si);
 
-		// スクロール量
-		int dy = 0;
+	auto lv = reinterpret_cast<ListViewEx*>(GetWindowLongPtr(hWnd, 0));
+	return lv->WndProc(hWnd, msg, wParam, lParam);
+}
 
-		switch (LOWORD(wParam)) {
-		case SB_LINEUP:
-			dy = -lv->rowHeight;
-			break;
-		case SB_LINEDOWN:
-			dy = lv->rowHeight;
-			break;
-		case SB_THUMBTRACK:
-		case SB_THUMBPOSITION:
-			dy = HIWORD(wParam) - si.nPos;
-			break;
-		case SB_PAGEDOWN:
-			dy = -static_cast<int>(si.nPage);
-			break;
-		case SB_PAGEUP:
-			dy = si.nPage;
-			break;
-		default:
-			dy = 0;
-			break;
-		}
-
-		SetScrollPos(hWnd, SB_VERT, si.nPos + dy, TRUE);
-		// 再描画
-		InvalidateRect(hWnd, NULL, TRUE);
-		return 0;
-	}
-	case WM_MOUSEWHEEL:
-	{
-		SCROLLINFO si;
-		si.cbSize = sizeof(si);
-		si.fMask = SIF_POS;
-		GetScrollInfo(hWnd, SB_VERT, &si);
-
-		auto delta = GET_WHEEL_DELTA_WPARAM(wParam);
-		int dy = 0;
-		dy = delta / 120 * -(lv->rowHeight * 2);
-
-		SetScrollPos(hWnd, SB_VERT, si.nPos + dy, TRUE);
-		// 再描画
-		InvalidateRect(hWnd, NULL, TRUE);
-		return 0;
-	}
-	case WM_MOUSEMOVE:
-		// 再描画
-		InvalidateRect(hWnd, NULL, TRUE);
-		return 0;
-	case WM_PAINT:
-		lv->OnPaint();
-		return 0;
-	case WM_SETFONT:
-	{
-		lv->font = reinterpret_cast<HFONT>(wParam);
-		// フォントの高さを取得
-		auto hdc = GetDC(hWnd);
-		SelectObject(hdc, lv->font);
-		TEXTMETRIC metrics;
-		GetTextMetrics(hdc, &metrics);
-		// 行の高さを計算
-		lv->rowHeight = metrics.tmHeight + ROW_SPACE;
-		return 0;
-	}
+LRESULT CALLBACK ListViewEx::WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
+	switch (msg) {
+	HANDLE_MSG(hwnd, WM_CREATE, OnCreate);
+	HANDLE_MSG(hwnd, WM_VSCROLL, OnVScroll);
+	HANDLE_MSG(hwnd, WM_MOUSEWHEEL, OnMouseWheel);
+	HANDLE_MSG(hwnd, WM_MOUSEMOVE, OnMouseMove);
+	HANDLE_MSG(hwnd, WM_SETFONT, OnSetFont);
+	HANDLE_MSG(hwnd, WM_PAINT, OnPaint);
 	default:
-		return DefWindowProc(hWnd, msg, wParam, lParam);
+		return DefWindowProc(hwnd, msg, wParam, lParam);
 	}
 }
 
-void ListViewEx::OnPaint() {
+BOOL ListViewEx::OnCreate(HWND hWnd, LPCREATESTRUCT lpCreateStruct) {
+	// SCROLLINFO を初期化
+	SCROLLINFO si;
+	si.cbSize = sizeof(si);
+	si.fMask = SIF_POS | SIF_RANGE | SIF_PAGE;
+	si.nPos = 0;
+	si.nMin = 0;
+	SetScrollInfo(hWnd, SB_VERT, &si, FALSE);
+
+	return TRUE;
+}
+
+void ListViewEx::OnVScroll(HWND hwnd, HWND hwndCtl, UINT code, int pos) {
+	// 現在の SCROLLINFO を取得
+	SCROLLINFO si;
+	si.cbSize = sizeof(si);
+	si.fMask = SIF_POS | SIF_RANGE | SIF_PAGE;
+	GetScrollInfo(hWnd, SB_VERT, &si);
+
+	// スクロール量
+	int dy = 0;
+
+	switch (code) {
+	case SB_LINEUP:
+		dy = -rowHeight;
+		break;
+	case SB_LINEDOWN:
+		dy = rowHeight;
+		break;
+	case SB_THUMBTRACK:
+	case SB_THUMBPOSITION:
+		dy = pos - si.nPos;
+		break;
+	case SB_PAGEDOWN:
+		dy = -static_cast<int>(si.nPage);
+		break;
+	case SB_PAGEUP:
+		dy = si.nPage;
+		break;
+	default:
+		dy = 0;
+		break;
+	}
+
+	SetScrollPos(hWnd, SB_VERT, si.nPos + dy, TRUE);
+	// 再描画
+	InvalidateRect(hWnd, NULL, TRUE);
+}
+
+void ListViewEx::OnMouseWheel(HWND hwnd, int xPos, int yPos, int zDelta, UINT fwKeys) {
+	SCROLLINFO si;
+	si.cbSize = sizeof(si);
+	si.fMask = SIF_POS;
+	GetScrollInfo(hWnd, SB_VERT, &si);
+
+	int dy = 0;
+	dy = zDelta / 120 * -(rowHeight * 2);
+
+	SetScrollPos(hWnd, SB_VERT, si.nPos + dy, TRUE);
+	// 再描画
+	InvalidateRect(hWnd, NULL, TRUE);
+}
+
+void ListViewEx::OnMouseMove(HWND hWnd, int x, int y, UINT keyFlags) {
+	// 再描画
+	InvalidateRect(hWnd, NULL, TRUE);
+}
+
+void ListViewEx::OnSetFont(HWND hWndCtl, HFONT hFont, BOOL fRedraw) {
+	font = hFont;
+	// フォントの高さを取得
+	auto hdc = GetDC(hWnd);
+	SelectObject(hdc, font);
+	TEXTMETRIC metrics;
+	GetTextMetrics(hdc, &metrics);
+	// 行の高さを計算
+	rowHeight = metrics.tmHeight + ROW_SPACE;
+}
+
+void ListViewEx::OnPaint(HWND hWnd) {
 	// 画面のサイズを取得
 	RECT rect;
 	GetClientRect(hWnd, &rect);
