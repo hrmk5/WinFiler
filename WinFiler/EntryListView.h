@@ -16,7 +16,24 @@ struct EntryListView_Data {
 	int rowHeight;
 };
 
-static void OnPaint(HWND hWnd, EntryListView_Data& data);
-static LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
-void EntryListView_SetVectorPtr(HWND hWnd, std::vector<Entry>* vec);
-void EntryListView_Register();
+class ListViewEx {
+public:
+	ListViewEx(HWND hWnd, HMENU id);
+
+	static void Register();
+
+	void SetVectorPtr(std::vector<Entry>* vec);
+	void Move(int x, int y, int width, int height, bool repaint);
+private:
+	HWND hWnd;
+
+	HBRUSH hoverBrush;
+	std::vector<Entry>* entries;
+	HFONT font;
+	int height;
+	int rowHeight;
+
+	static LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
+
+	void OnPaint();
+};

@@ -4,7 +4,6 @@ UI::UI() {
 }
 
 UI::~UI() {
-	ImageList_Destroy(imageList);
 }
 
 constexpr int ID_PATHEDIT = 1;
@@ -20,12 +19,8 @@ void UI::initialize(HWND hWnd) {
 		L"EDIT", L"C:\\", WS_CHILD | WS_VISIBLE | WS_BORDER | ES_LEFT,
 		0, 0, 0, 0,
 		hWnd, reinterpret_cast<HMENU>(ID_PATHEDIT), NULL, NULL);
-	entryListView = CreateWindow(
-		WC_ENTRYLISTVIEW, NULL, 
-		WS_CHILD | WS_VISIBLE,
-		0, 0, 0, 0,
-		hWnd, reinterpret_cast<HMENU>(ID_ENTRYLISTVIEW), NULL, NULL);
-	EntryListView_SetVectorPtr(entryListView, &entries);
+	entryListView = std::make_unique<ListViewEx>(hWnd, reinterpret_cast<HMENU>(ID_ENTRYLISTVIEW));
+	entryListView->SetVectorPtr(&entries);
 
 	onResize(windowWidth, windowHeight);
 
@@ -40,7 +35,7 @@ void UI::onNotify(LPARAM lParam) {
 
 void UI::onResize(int width, int height) {
 	MoveWindow(pathEdit, 5, 5, width - 10, 25, FALSE);
-	MoveWindow(entryListView, 5, 35, width - 10, height - 40, TRUE);
+	entryListView->Move(5, 35, width - 10, height - 40, true);
 }
 
 void UI::changeDirectory(const std::wstring& directory) {

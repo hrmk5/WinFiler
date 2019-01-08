@@ -2,86 +2,46 @@
 
 constexpr int ROW_SPACE = 3;
 
-static void OnPaint(HWND hWnd, EntryListView_Data& data) {
-	// 画面のサイズを取得
-	RECT rect;
-	GetClientRect(hWnd, &rect);
+ListViewEx::ListViewEx(HWND hWnd, HMENU id) {
+	this->hWnd = CreateWindow(
+		WC_ENTRYLISTVIEW, NULL, 
+		WS_CHILD | WS_VISIBLE,
+		0, 0, 0, 0,
+		hWnd, id, NULL, this);
 
-	// 現在の SCROLLINFO を取得
-	SCROLLINFO si;
-	si.cbSize = sizeof(si);
-	si.fMask = SIF_POS | SIF_RANGE | SIF_PAGE;
-	GetScrollInfo(hWnd, SB_VERT, &si);
-	
-	// カーソル位置を取得
-	POINT cursorPos;
-	GetCursorPos(&cursorPos);
-	ScreenToClient(hWnd, &cursorPos);
-
-	PAINTSTRUCT ps;
-	HDC _hdc = BeginPaint(hWnd, &ps);
-	HDC hdc = CreateCompatibleDC(_hdc);
-	HBITMAP bitmap = CreateCompatibleBitmap(_hdc, rect.right, rect.bottom);
-	SelectObject(hdc, bitmap);
-
-	FillRect(hdc, &rect, reinterpret_cast<HBRUSH>(COLOR_WINDOW + 1));
-
-	// フォントを設定
-	SelectObject(hdc, data.font);
-
-	SetBkMode(hdc, TRANSPARENT);
-	SetTextColor(hdc, RGB(0, 0, 0));
-	int count = 0;
-	int maxY = 0;
-	if (data.entries != nullptr) {
-		for (const auto& entry : *data.entries) {
-			auto y = data.rowHeight * count - si.nPos;
-			if (cursorPos.y >= y && cursorPos.y < y + data.rowHeight) {
-				// カーソルが重なっていたら背景を描画
-				RECT background = { 0, y, rect.right, y + data.rowHeight };
-				FillRect(hdc, &background, data.hoverBrush);
-			}
-
-			// ファイル名を描画
-			RECT textRect = { 0, y, rect.right, y + data.rowHeight };
-			DrawText(hdc, entry.name.c_str(), -1, &textRect, DT_SINGLELINE | DT_VCENTER);
-			count++;
-		}
-		maxY = data.rowHeight * count;
-	}
-
-	BitBlt(_hdc, 0, 0, rect.right, rect.bottom, hdc, 0, 0, SRCCOPY);
-
-	DeleteObject(bitmap);
-	DeleteDC(hdc);
-
-	EndPaint(hWnd, &ps);
-
-	// スクロールバー
-	si.nPage = rect.bottom;
-	si.nMax = maxY;
-	SetScrollInfo(hWnd, SB_VERT, &si, TRUE);
+	entries = nullptr;
+	height = 0;
+	hoverBrush = CreateSolidBrush(RGB(220, 220, 220));
 }
 
-static LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) {
-	auto data = reinterpret_cast<EntryListView_Data*>(GetWindowLongPtr(hWnd, 0));
+void ListViewEx::Register() {
+	WNDCLASS wc;
+	ZeroMemory(&wc, sizeof(wc));
+	wc.style = CS_GLOBALCLASS | CS_HREDRAW | CS_VREDRAW;
+	wc.lpfnWndProc = ListViewEx::WndProc;
+	wc.lpszClassName = WC_ENTRYLISTVIEW;
+	wc.cbWndExtra = sizeof(ListViewEx*);
+	wc.hCursor = LoadCursor(NULL, IDC_ARROW);
+	RegisterClass(&wc);
+}
+
+void ListViewEx::SetVectorPtr(std::vector<Entry>* vec) {
+	entries = vec;
+}
+
+void ListViewEx::Move(int x, int y, int width, int height, bool repaint) {
+	MoveWindow(hWnd, x, y, width, height, repaint);
+}
+
+LRESULT CALLBACK ListViewEx::WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) {
+	auto lv = reinterpret_cast<ListViewEx*>(GetWindowLongPtr(hWnd, 0));
 	switch (msg) {
-	case WM_NCCREATE:
-		// EntryListView_Data を初期化
-		data = new EntryListView_Data;
-		data->entries = nullptr;
-		data->height = 0;
-		data->hoverBrush = CreateSolidBrush(RGB(220, 220, 220));
-		SetWindowLongPtr(hWnd, 0, reinterpret_cast<LONG_PTR>(data));
-		return 1;
-	case WM_NCDESTROY:
-		if (data != nullptr) {
-			DeleteObject(data->hoverBrush);
-			delete data;
-		}
-		return 0;
 	case WM_CREATE:
 	{
+		LPCREATESTRUCT pcs = reinterpret_cast<LPCREATESTRUCT>(lParam);
+		lv = reinterpret_cast<ListViewEx*>(pcs->lpCreateParams);
+		SetWindowLongPtr(hWnd, 0, reinterpret_cast<LONG_PTR>(lv));
+
 		// SCROLLINFO を初期化
 		SCROLLINFO si;
 		si.cbSize = sizeof(si);
@@ -106,10 +66,10 @@ static LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lPara
 
 		switch (LOWORD(wParam)) {
 		case SB_LINEUP:
-			dy = -data->rowHeight;
+			dy = -lv->rowHeight;
 			break;
 		case SB_LINEDOWN:
-			dy = data->rowHeight;
+			dy = lv->rowHeight;
 			break;
 		case SB_THUMBTRACK:
 		case SB_THUMBPOSITION:
@@ -140,7 +100,7 @@ static LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lPara
 
 		auto delta = GET_WHEEL_DELTA_WPARAM(wParam);
 		int dy = 0;
-		dy = delta / 120 * -(data->rowHeight * 2);
+		dy = delta / 120 * -(lv->rowHeight * 2);
 
 		SetScrollPos(hWnd, SB_VERT, si.nPos + dy, TRUE);
 		// 再描画
@@ -152,18 +112,18 @@ static LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lPara
 		InvalidateRect(hWnd, NULL, TRUE);
 		return 0;
 	case WM_PAINT:
-		OnPaint(hWnd, *data);
+		lv->OnPaint();
 		return 0;
 	case WM_SETFONT:
 	{
-		data->font = reinterpret_cast<HFONT>(wParam);
+		lv->font = reinterpret_cast<HFONT>(wParam);
 		// フォントの高さを取得
 		auto hdc = GetDC(hWnd);
-		SelectObject(hdc, data->font);
+		SelectObject(hdc, lv->font);
 		TEXTMETRIC metrics;
 		GetTextMetrics(hdc, &metrics);
 		// 行の高さを計算
-		data->rowHeight = metrics.tmHeight + ROW_SPACE;
+		lv->rowHeight = metrics.tmHeight + ROW_SPACE;
 		return 0;
 	}
 	default:
@@ -171,18 +131,63 @@ static LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lPara
 	}
 }
 
-void EntryListView_SetVectorPtr(HWND hWnd, std::vector<Entry>* vec) {
-	auto data = reinterpret_cast<EntryListView_Data*>(GetWindowLongPtr(hWnd, 0));
-	data->entries = vec;
-}
+void ListViewEx::OnPaint() {
+	// 画面のサイズを取得
+	RECT rect;
+	GetClientRect(hWnd, &rect);
 
-void EntryListView_Register() {
-	WNDCLASS wc;
-	ZeroMemory(&wc, sizeof(wc));
-	wc.style = CS_GLOBALCLASS | CS_HREDRAW | CS_VREDRAW;
-	wc.lpfnWndProc = WndProc;
-	wc.lpszClassName = WC_ENTRYLISTVIEW;
-	wc.cbWndExtra = sizeof(EntryListView_Data*);
-	wc.hCursor = LoadCursor(NULL, IDC_ARROW);
-	RegisterClass(&wc);
+	// 現在の SCROLLINFO を取得
+	SCROLLINFO si;
+	si.cbSize = sizeof(si);
+	si.fMask = SIF_POS | SIF_RANGE | SIF_PAGE;
+	GetScrollInfo(hWnd, SB_VERT, &si);
+	
+	// カーソル位置を取得
+	POINT cursorPos;
+	GetCursorPos(&cursorPos);
+	ScreenToClient(hWnd, &cursorPos);
+
+	PAINTSTRUCT ps;
+	HDC _hdc = BeginPaint(hWnd, &ps);
+	HDC hdc = CreateCompatibleDC(_hdc);
+	HBITMAP bitmap = CreateCompatibleBitmap(_hdc, rect.right, rect.bottom);
+	SelectObject(hdc, bitmap);
+
+	FillRect(hdc, &rect, reinterpret_cast<HBRUSH>(COLOR_WINDOW + 1));
+
+	// フォントを設定
+	SelectObject(hdc, font);
+
+	SetBkMode(hdc, TRANSPARENT);
+	SetTextColor(hdc, RGB(0, 0, 0));
+	int count = 0;
+	int maxY = 0;
+	if (entries != nullptr) {
+		for (const auto& entry : *entries) {
+			auto y = rowHeight * count - si.nPos;
+			if (cursorPos.y >= y && cursorPos.y < y + rowHeight) {
+				// カーソルが重なっていたら背景を描画
+				RECT background = { 0, y, rect.right, y + rowHeight };
+				FillRect(hdc, &background, hoverBrush);
+			}
+
+			// ファイル名を描画
+			RECT textRect = { 0, y, rect.right, y + rowHeight };
+			DrawText(hdc, entry.name.c_str(), -1, &textRect, DT_SINGLELINE | DT_VCENTER);
+			count++;
+		}
+		maxY = rowHeight * count;
+	}
+
+	BitBlt(_hdc, 0, 0, rect.right, rect.bottom, hdc, 0, 0, SRCCOPY);
+
+	DeleteObject(bitmap);
+	DeleteDC(hdc);
+
+	EndPaint(hWnd, &ps);
+
+	// スクロールバー
+	si.nPage = rect.bottom;
+	si.nMax = maxY;
+	SetScrollInfo(hWnd, SB_VERT, &si, TRUE);
 }

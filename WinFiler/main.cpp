@@ -62,7 +62,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 	wcex.hIconSm = LoadIcon(NULL, IDI_APPLICATION);
 	RegisterClassEx(&wcex);
 
-	EntryListView_Register();
+	ListViewEx::Register();
 
 	HWND window = CreateWindow(
 		wcex.lpszClassName, L"WinFiler", WS_OVERLAPPEDWINDOW,

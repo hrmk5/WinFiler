@@ -23,8 +23,8 @@ public:
 	void changeDirectory(const std::wstring& directory);
 private:
 	int windowWidth, windowHeight;
-	HWND pathEdit, entryListView;
-	HIMAGELIST imageList;
+	HWND pathEdit;
+	std::unique_ptr<ListViewEx> entryListView;
 
 	std::wstring currentDirectory;
 	std::vector<Entry> entries;
