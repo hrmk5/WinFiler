@@ -12,6 +12,11 @@ static void OnPaint(HWND hWnd, EntryListView_Data& data) {
 	si.cbSize = sizeof(si);
 	si.fMask = SIF_POS | SIF_RANGE | SIF_PAGE;
 	GetScrollInfo(hWnd, SB_VERT, &si);
+	
+	// Get cursor position
+	POINT cursorPos;
+	GetCursorPos(&cursorPos);
+	ScreenToClient(hWnd, &cursorPos);
 
 	PAINTSTRUCT ps;
 	HDC hdc = BeginPaint(hWnd, &ps);
@@ -21,6 +26,7 @@ static void OnPaint(HWND hWnd, EntryListView_Data& data) {
 	// Set font
 	SelectObject(hdc, data.font);
 
+	SetBkMode(hdc, TRANSPARENT);
 	SetTextColor(hdc, RGB(0, 0, 0));
 	int count = 0;
 	int maxY = 0;
@@ -28,6 +34,12 @@ static void OnPaint(HWND hWnd, EntryListView_Data& data) {
 		for (const auto& entry : *data.entries) {
 			// Draw file name
 			auto y = data.rowHeight * count - si.nPos;
+			if (cursorPos.y >= y && cursorPos.y < y + data.rowHeight) {
+				// Draw background if entry is hovered
+				RECT background = { 0, y, rect.right, y + data.rowHeight };
+				FillRect(hdc, &background, data.hoverBrush);
+			}
+
 			RECT textRect = { 0, y, rect.right, y + data.rowHeight };
 			DrawText(hdc, entry.name.c_str(), -1, &textRect, DT_SINGLELINE | DT_VCENTER);
 			count++;
@@ -51,10 +63,13 @@ static LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lPara
 		data = new EntryListView_Data;
 		data->entries = nullptr;
 		data->height = 0;
+		// Initialize brush
+		data->hoverBrush = CreateSolidBrush(RGB(220, 220, 220));
 		SetWindowLongPtr(hWnd, 0, reinterpret_cast<LONG_PTR>(data));
 		return 1;
 	case WM_NCDESTROY:
 		if (data != nullptr) {
+			DeleteObject(data->hoverBrush);
 			delete data;
 		}
 		return 0;
@@ -66,6 +81,8 @@ static LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lPara
 		si.nPos = 0;
 		si.nMin = 0;
 		SetScrollInfo(hWnd, SB_VERT, &si, FALSE);
+		return 0;
+	case WM_DESTROY:
 		return 0;
 	case WM_VSCROLL:
 	{
@@ -121,6 +138,10 @@ static LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lPara
 		InvalidateRect(hWnd, NULL, TRUE);
 		return 0;
 	}
+	case WM_MOUSEMOVE:
+		// Repaint
+		InvalidateRect(hWnd, NULL, TRUE);
+		return 0;
 	case WM_PAINT:
 		OnPaint(hWnd, *data);
 		return 0;

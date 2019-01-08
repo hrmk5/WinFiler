@@ -9,6 +9,7 @@
 #define WC_ENTRYLISTVIEW _T("EntryListView")
 
 struct EntryListView_Data {
+	HBRUSH hoverBrush;
 	std::vector<Entry>* entries;
 	HFONT font;
 	int height;
