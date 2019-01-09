@@ -9,8 +9,6 @@ ListViewEx::ListViewEx(HWND hWnd, HMENU id) {
 		0, 0, 0, 0,
 		hWnd, id, NULL, this);
 
-	entries = nullptr;
-	height = 0;
 	hoverBrush = CreateSolidBrush(RGB(220, 220, 220));
 }
 
@@ -25,8 +23,16 @@ void ListViewEx::Register() {
 	RegisterClass(&wc);
 }
 
-void ListViewEx::SetVectorPtr(std::vector<Entry>* vec) {
-	entries = vec;
+void ListViewEx::AddColumn(const ListViewExColumn& column) {
+	columns.push_back(column);
+}
+
+void ListViewEx::AddItem(const std::any& value) {
+	items.push_back(value);
+}
+
+void ListViewEx::DeleteAllItems() {
+	items.clear();
 }
 
 void ListViewEx::Move(int x, int y, int width, int height, bool repaint) {
@@ -168,22 +174,28 @@ void ListViewEx::OnPaint(HWND hWnd) {
 	SetTextColor(hdc, RGB(0, 0, 0));
 	int count = 0;
 	int maxY = 0;
-	if (entries != nullptr) {
-		for (const auto& entry : *entries) {
-			auto y = rowHeight * count - si.nPos;
-			if (cursorPos.y >= y && cursorPos.y < y + rowHeight) {
-				// ƒJ[ƒ\ƒ‹‚ªd‚È‚Á‚Ä‚¢‚½‚ç”wŒi‚ð•`‰æ
-				RECT background = { 0, y, rect.right, y + rowHeight };
-				FillRect(hdc, &background, hoverBrush);
-			}
-
-			// ƒtƒ@ƒCƒ‹–¼‚ð•`‰æ
-			RECT textRect = { 0, y, rect.right, y + rowHeight };
-			DrawText(hdc, entry.name.c_str(), -1, &textRect, DT_SINGLELINE | DT_VCENTER);
-			count++;
+	for (const auto& item : items) {
+		// •`‰æ‚·‚é Y À•W
+		auto y = rowHeight * count - si.nPos;
+		// ƒJ[ƒ\ƒ‹‚ªd‚È‚Á‚Ä‚¢‚½‚ç”wŒi‚ð•`‰æ
+		if (cursorPos.y >= y && cursorPos.y < y + rowHeight) {
+			RECT background = { 0, y, rect.right, y + rowHeight };
+			FillRect(hdc, &background, hoverBrush);
 		}
-		maxY = rowHeight * count;
+
+		// •`‰æ‚·‚é X À•W
+		int x = 0;
+		for (const auto& column : columns) {
+			// •¶Žš—ñ‚ð•`‰æ
+			RECT textRect = { x, y, x + column.width, y + rowHeight };
+			DrawText(hdc, column.get(item).c_str(), -1, &textRect, DT_SINGLELINE | DT_VCENTER);
+
+			x += column.width;
+		}
+
+		count++;
 	}
+	maxY = rowHeight * count;
 
 	BitBlt(_hdc, 0, 0, rect.right, rect.bottom, hdc, 0, 0, SRCCOPY);
 

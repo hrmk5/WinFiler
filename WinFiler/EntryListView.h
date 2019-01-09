@@ -1,20 +1,19 @@
 #pragma once
 
 #include <vector>
+#include <functional>
+#include <any>
 #include <tchar.h>
 #include <Windows.h>
 #include <windowsx.h>
 #include <fmt/format.h>
-#include "Entry.h"
 
 #define WC_ENTRYLISTVIEW _T("EntryListView")
 
-struct EntryListView_Data {
-	HBRUSH hoverBrush;
-	std::vector<Entry>* entries;
-	HFONT font;
-	int height;
-	int rowHeight;
+struct ListViewExColumn {
+	int width;
+	std::wstring header;
+	std::function<std::wstring(std::any v)> get;
 };
 
 class ListViewEx {
@@ -23,15 +22,17 @@ public:
 
 	static void Register();
 
-	void SetVectorPtr(std::vector<Entry>* vec);
+	void AddColumn(const ListViewExColumn& column);
+	void AddItem(const std::any& value);
+	void DeleteAllItems();
 	void Move(int x, int y, int width, int height, bool repaint);
 private:
 	HWND hWnd;
 
 	HBRUSH hoverBrush;
-	std::vector<Entry>* entries;
+	std::vector<std::any> items;
+	std::vector<ListViewExColumn> columns;
 	HFONT font;
-	int height;
 	int rowHeight;
 
 	static LRESULT CALLBACK WndProc_(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);

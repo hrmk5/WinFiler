@@ -8,6 +8,7 @@
 #include <Uxtheme.h>
 #include <Shlwapi.h>
 #include <fmt/format.h>
+#include "Entry.h"
 #include "EntryListView.h"
 
 class UI {

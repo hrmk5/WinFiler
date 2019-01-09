@@ -20,7 +20,43 @@ void UI::initialize(HWND hWnd) {
 		0, 0, 0, 0,
 		hWnd, reinterpret_cast<HMENU>(ID_PATHEDIT), NULL, NULL);
 	entryListView = std::make_unique<ListViewEx>(hWnd, reinterpret_cast<HMENU>(ID_ENTRYLISTVIEW));
-	entryListView->SetVectorPtr(&entries);
+
+	// ファイル名
+	ListViewExColumn column;
+	column.width = 200;
+	column.header = L"名前";
+	column.get = [](const std::any& item) {
+		auto entry = std::any_cast<Entry>(item);
+		return entry.name;
+	};
+	entryListView->AddColumn(column);
+
+	// 最終更新日時
+	column.width = 200;
+	column.header = L"最終更新日時";
+	column.get = [](const std::any& item) {
+		auto entry = std::any_cast<Entry>(item);
+		if (entry.type == EntryType::FILE) {
+			return fmt::format(L"{}/{:0>2}/{:0>2} {:0>2}:{:0>2}",
+				entry.time.wYear, entry.time.wMonth, entry.time.wDay, entry.time.wHour, entry.time.wMinute, entry.time.wSecond);
+		} else {
+			return std::wstring(L"");
+		}
+	};
+	entryListView->AddColumn(column);
+
+	// サイズ
+	column.width = 200;
+	column.header = L"サイズ";
+	column.get = [](const std::any& item) {
+		auto entry = std::any_cast<Entry>(item);
+		if (entry.type == EntryType::FILE) {
+			return fmt::format(L"{} バイト", entry.size);
+		} else {
+			return std::wstring(L"");
+		}
+	};
+	entryListView->AddColumn(column);
 
 	onResize(windowWidth, windowHeight);
 
@@ -40,6 +76,7 @@ void UI::onResize(int width, int height) {
 
 void UI::changeDirectory(const std::wstring& directory) {
 	currentDirectory = directory;
+	entryListView->DeleteAllItems();
 	entries.clear();
 
 	int count = 0;
@@ -61,11 +98,8 @@ void UI::changeDirectory(const std::wstring& directory) {
 			entry.type = EntryType::FILE;
 			// Size
 			entry.size = MAKELONG(findData.nFileSizeLow, findData.nFileSizeHigh);
-			//entry.sizeStr = fmt::format(L"{} B", entry.size);
 			// Last modified time
 			FileTimeToSystemTime(&findData.ftLastWriteTime, &entry.time);
-			//entry.timeStr = fmt::format(L"{}/{:0>2}/{:0>2} {:0>2}:{:0>2}",
-			//		entry.time.wYear, entry.time.wMonth, entry.time.wDay, entry.time.wHour, entry.time.wMinute, entry.time.wSecond);
 		}
 
 		// Get file icon
@@ -82,6 +116,7 @@ void UI::changeDirectory(const std::wstring& directory) {
 		}
 
 		entries.push_back(entry);
+		entryListView->AddItem(entry);
 		count++;
 	} while (FindNextFile(hFind, &findData));
 }
