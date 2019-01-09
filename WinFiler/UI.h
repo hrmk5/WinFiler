@@ -9,7 +9,7 @@
 #include <Shlwapi.h>
 #include <fmt/format.h>
 #include "Entry.h"
-#include "EntryListView.h"
+#include "ListViewEx.h"
 
 class UI {
 public:

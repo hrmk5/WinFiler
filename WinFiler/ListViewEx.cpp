@@ -1,4 +1,4 @@
-#include "EntryListView.h"
+#include "ListViewEx.h"
 
 constexpr int ROW_SPACE = 3;
 
