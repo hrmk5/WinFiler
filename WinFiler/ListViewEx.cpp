@@ -1,6 +1,6 @@
 #include "ListViewEx.h"
 
-constexpr int ROW_SPACE = 3;
+constexpr int ROW_SPACE = 4;
 
 ListViewEx::ListViewEx(HWND hWnd, HMENU id) : rowWidth(0) {
 	this->hWnd = CreateWindow(
@@ -201,6 +201,7 @@ void ListViewEx::OnMouseMove(HWND hWnd, int x, int y, UINT keyFlags) {
 void ListViewEx::OnLButtonDown(HWND hWnd, BOOL doubleClick, int x, int y, UINT keyFlags) {
 	if (!doubleClick) {
 		if (x < rowWidth) {
+
 			// 垂直スクロールバーを取得
 			SCROLLINFO si;
 			si.cbSize = sizeof(si);
@@ -208,8 +209,34 @@ void ListViewEx::OnLButtonDown(HWND hWnd, BOOL doubleClick, int x, int y, UINT k
 			GetScrollInfo(hWnd, SB_VERT, &si);
 
 			int index = (y + si.nPos) / rowHeight;
-			selection.start = index;
-			selection.end = index;
+
+			if (keyFlags & MK_CONTROL) {
+				// コントロールキーを押していて、既に選択されていたら選択を解除する
+				auto iter = std::find(selectedIndexes.begin(), selectedIndexes.end(), index);
+				if (iter != selectedIndexes.end()) {
+					selectedIndexes.erase(iter);
+				} else {
+					selectedIndexes.push_back(index);
+					lastSelectedIndex = index;
+				}
+			} else if (keyFlags & MK_SHIFT) {
+				// シフトキーを押していたら最後に選択した項目までのすべての項目を選択
+				if (selectedIndexes.empty()) {
+					selectedIndexes.push_back(index);
+					lastSelectedIndex = index;
+				} else {
+					selectedIndexes.clear();
+					selectedIndexes.push_back(lastSelectedIndex);
+					for (int i = 0; i < abs(index - lastSelectedIndex); i++) {
+						selectedIndexes.push_back(index > lastSelectedIndex ? lastSelectedIndex + 1 + i : index + i);
+					}
+				}
+			} else {
+				// コントロールキーが押されていなかったら現在の選択範囲を消去
+				selectedIndexes.clear();
+				selectedIndexes.push_back(index);
+				lastSelectedIndex = index;
+			}
 			InvalidateRect(hWnd, NULL, TRUE);
 		}
 	}
@@ -266,16 +293,16 @@ void ListViewEx::OnPaint(HWND hWnd) {
 	for (const auto& item : items) {
 		// 描画する Y 座標
 		auto y = rowHeight * count - verticalScrollInfo.nPos;
+
+		// 選択されていたら背景を描画
+		if (std::find(selectedIndexes.begin(), selectedIndexes.end(), count) != selectedIndexes.end()) {
+			RECT background = { 0, y, rowWidth, y + rowHeight };
+			FillRect(hdc, &background, colorBrush);
+		}
 		// カーソルが重なっていたら背景を描画
 		if (cursorPos.y >= y && cursorPos.y < y + rowHeight && cursorPos.x < rowWidth) {
 			RECT background = { 0, y, rowWidth, y + rowHeight };
 			FillRect(hdc, &background, hoverBrush);
-		}
-
-		// 選択されていたら背景を描画
-		if (count >= selection.start && count <= selection.end) {
-			RECT background = { 0, y, rowWidth, y + rowHeight };
-			FillRect(hdc, &background, colorBrush);
 		}
 
 		// 描画する X 座標

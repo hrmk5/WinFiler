@@ -16,15 +16,8 @@ struct ListViewExColumn {
 	std::function<std::wstring(std::any v)> get;
 };
 
-struct ListViewExSelection {
-	int start;
-	int end;
-};
-
 class ListViewEx {
 public:
-	ListViewExSelection selection;
-
 	ListViewEx(HWND hWnd, HMENU id);
 
 	static void Register();
@@ -43,6 +36,8 @@ private:
 	HFONT font;
 	int rowHeight;
 	int rowWidth;
+	std::vector<int> selectedIndexes;
+	int lastSelectedIndex;
 
 	static LRESULT CALLBACK WndProc_(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 	LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
