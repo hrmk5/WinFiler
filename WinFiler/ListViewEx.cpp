@@ -55,10 +55,14 @@ LRESULT CALLBACK ListViewEx::WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM 
 	switch (msg) {
 	HANDLE_MSG(hwnd, WM_CREATE, OnCreate);
 	HANDLE_MSG(hwnd, WM_VSCROLL, OnVScroll);
+	HANDLE_MSG(hwnd, WM_HSCROLL, OnHScroll);
 	HANDLE_MSG(hwnd, WM_MOUSEWHEEL, OnMouseWheel);
 	HANDLE_MSG(hwnd, WM_MOUSEMOVE, OnMouseMove);
 	HANDLE_MSG(hwnd, WM_SETFONT, OnSetFont);
 	HANDLE_MSG(hwnd, WM_PAINT, OnPaint);
+	case WM_MOUSEHWHEEL:
+		OnMouseHWheel(hwnd, HIWORD(wParam));
+		return 0;
 	default:
 		return DefWindowProc(hwnd, msg, wParam, lParam);
 	}
@@ -72,6 +76,13 @@ BOOL ListViewEx::OnCreate(HWND hWnd, LPCREATESTRUCT lpCreateStruct) {
 	si.nPos = 0;
 	si.nMin = 0;
 	SetScrollInfo(hWnd, SB_VERT, &si, FALSE);
+
+	SCROLLINFO hsi;
+	hsi.cbSize = sizeof(hsi);
+	hsi.fMask = SIF_POS | SIF_RANGE | SIF_PAGE;
+	hsi.nPos = 0;
+	hsi.nMin = 0;
+	SetScrollInfo(hWnd, SB_HORZ, &hsi, FALSE);
 
 	return TRUE;
 }
@@ -113,6 +124,43 @@ void ListViewEx::OnVScroll(HWND hwnd, HWND hwndCtl, UINT code, int pos) {
 	InvalidateRect(hWnd, NULL, TRUE);
 }
 
+void ListViewEx::OnHScroll(HWND hwnd, HWND hwndCtl, UINT code, int pos) {
+	// 現在の SCROLLINFO を取得
+	SCROLLINFO si;
+	si.cbSize = sizeof(si);
+	si.fMask = SIF_POS | SIF_RANGE | SIF_PAGE;
+	GetScrollInfo(hWnd, SB_HORZ, &si);
+
+	// スクロール量
+	int dx = 0;
+
+	switch (code) {
+	case SB_LINELEFT:
+		dx = -10;
+		break;
+	case SB_LINERIGHT:
+		dx = 10;
+		break;
+	case SB_THUMBTRACK:
+	case SB_THUMBPOSITION:
+		dx = pos - si.nPos;
+		break;
+	case SB_PAGELEFT:
+		dx = -static_cast<int>(si.nPage);
+		break;
+	case SB_PAGERIGHT:
+		dx = si.nPage;
+		break;
+	default:
+		dx = 0;
+		break;
+	}
+
+	SetScrollPos(hWnd, SB_HORZ, si.nPos + dx, TRUE);
+	// 再描画
+	InvalidateRect(hWnd, NULL, TRUE);
+}
+
 void ListViewEx::OnMouseWheel(HWND hwnd, int xPos, int yPos, int zDelta, UINT fwKeys) {
 	SCROLLINFO si;
 	si.cbSize = sizeof(si);
@@ -125,6 +173,21 @@ void ListViewEx::OnMouseWheel(HWND hwnd, int xPos, int yPos, int zDelta, UINT fw
 	SetScrollPos(hWnd, SB_VERT, si.nPos + dy, TRUE);
 	// 再描画
 	InvalidateRect(hWnd, NULL, TRUE);
+}
+
+void ListViewEx::OnMouseHWheel(HWND hWnd, int delta) {
+	// TODO: マウスを左に回転させると delta が 65146 になる
+	/*SCROLLINFO si;
+	si.cbSize = sizeof(si);
+	si.fMask = SIF_POS;
+	GetScrollInfo(hWnd, SB_HORZ, &si);
+
+	int dx = 0;
+	dx = delta / 120 * 20;
+
+	SetScrollPos(hWnd, SB_HORZ, si.nPos + dx, TRUE);
+	// 再描画
+	InvalidateRect(hWnd, NULL, TRUE);*/
 }
 
 void ListViewEx::OnMouseMove(HWND hWnd, int x, int y, UINT keyFlags) {
@@ -148,11 +211,17 @@ void ListViewEx::OnPaint(HWND hWnd) {
 	RECT rect;
 	GetClientRect(hWnd, &rect);
 
-	// 現在の SCROLLINFO を取得
-	SCROLLINFO si;
-	si.cbSize = sizeof(si);
-	si.fMask = SIF_POS | SIF_RANGE | SIF_PAGE;
-	GetScrollInfo(hWnd, SB_VERT, &si);
+	// 垂直スクロールバー
+	SCROLLINFO verticalScrollInfo;
+	verticalScrollInfo.cbSize = sizeof(verticalScrollInfo);
+	verticalScrollInfo.fMask = SIF_POS | SIF_RANGE | SIF_PAGE;
+	GetScrollInfo(hWnd, SB_VERT, &verticalScrollInfo);
+
+	// 平行スクロールバー
+	SCROLLINFO horizontalScrollInfo;
+	horizontalScrollInfo.cbSize = sizeof(horizontalScrollInfo);
+	horizontalScrollInfo.fMask = SIF_POS | SIF_RANGE | SIF_PAGE;
+	GetScrollInfo(hWnd, SB_HORZ, &horizontalScrollInfo);
 	
 	// カーソル位置を取得
 	POINT cursorPos;
@@ -173,10 +242,11 @@ void ListViewEx::OnPaint(HWND hWnd) {
 	SetBkMode(hdc, TRANSPARENT);
 	SetTextColor(hdc, RGB(0, 0, 0));
 	int count = 0;
+	int maxX = 0;
 	int maxY = 0;
 	for (const auto& item : items) {
 		// 描画する Y 座標
-		auto y = rowHeight * count - si.nPos;
+		auto y = rowHeight * count - verticalScrollInfo.nPos;
 		// カーソルが重なっていたら背景を描画
 		if (cursorPos.y >= y && cursorPos.y < y + rowHeight) {
 			RECT background = { 0, y, rect.right, y + rowHeight };
@@ -187,12 +257,13 @@ void ListViewEx::OnPaint(HWND hWnd) {
 		int x = 0;
 		for (const auto& column : columns) {
 			// 文字列を描画
-			RECT textRect = { x, y, x + column.width, y + rowHeight };
+			RECT textRect = { x - horizontalScrollInfo.nPos, y, x - horizontalScrollInfo.nPos + column.width, y + rowHeight };
 			DrawText(hdc, column.get(item).c_str(), -1, &textRect, DT_SINGLELINE | DT_VCENTER);
 
 			x += column.width;
 		}
 
+		maxX = x;
 		count++;
 	}
 	maxY = rowHeight * count;
@@ -204,8 +275,13 @@ void ListViewEx::OnPaint(HWND hWnd) {
 
 	EndPaint(hWnd, &ps);
 
-	// スクロールバー
-	si.nPage = rect.bottom;
-	si.nMax = maxY;
-	SetScrollInfo(hWnd, SB_VERT, &si, TRUE);
+	// 垂直スクロールバー
+	verticalScrollInfo.nPage = rect.bottom;
+	verticalScrollInfo.nMax = maxY;
+	SetScrollInfo(hWnd, SB_VERT, &verticalScrollInfo, TRUE);
+
+	// 平行スクロールバー
+	horizontalScrollInfo.nPage = rect.right;
+	horizontalScrollInfo.nMax = maxX;
+	SetScrollInfo(hWnd, SB_HORZ, &horizontalScrollInfo, TRUE);
 }

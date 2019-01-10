@@ -39,7 +39,9 @@ private:
 	LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 	BOOL OnCreate(HWND hWnd, LPCREATESTRUCT lpCreateStruct);
 	void OnVScroll(HWND hWnd, HWND hWndCtl, UINT code, int pos);
+	void OnHScroll(HWND hWnd, HWND hWndCtl, UINT code, int pos);
 	void OnMouseWheel(HWND hWnd, int xPos, int yPos, int zDelta, UINT fwKeys);
+	void OnMouseHWheel(HWND hWnd, int delta);
 	void OnMouseMove(HWND hWnd, int x, int y, UINT keyFlags);
 	void OnSetFont(HWND hWndCtl, HFONT hfont, BOOL fRedraw);
 	void OnPaint(HWND hWnd);
