@@ -1,6 +1,7 @@
 #pragma once
 
 #include <vector>
+#include <map>
 #include <functional>
 #include <any>
 #include <tchar.h>
@@ -36,7 +37,7 @@ private:
 	HFONT font;
 	int rowHeight;
 	int rowWidth;
-	std::vector<int> selectedIndexes;
+	std::map<int, bool> selectedIndexes;
 	int lastSelectedIndex;
 
 	static LRESULT CALLBACK WndProc_(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);

@@ -212,29 +212,28 @@ void ListViewEx::OnLButtonDown(HWND hWnd, BOOL doubleClick, int x, int y, UINT k
 
 			if (keyFlags & MK_CONTROL) {
 				// コントロールキーを押していて、既に選択されていたら選択を解除する
-				auto iter = std::find(selectedIndexes.begin(), selectedIndexes.end(), index);
-				if (iter != selectedIndexes.end()) {
-					selectedIndexes.erase(iter);
+				if (selectedIndexes[index]) {
+					selectedIndexes[index] = false;
 				} else {
-					selectedIndexes.push_back(index);
+					selectedIndexes[index] = true;
 					lastSelectedIndex = index;
 				}
 			} else if (keyFlags & MK_SHIFT) {
 				// シフトキーを押していたら最後に選択した項目までのすべての項目を選択
 				if (selectedIndexes.empty()) {
-					selectedIndexes.push_back(index);
+					selectedIndexes[index] = true;
 					lastSelectedIndex = index;
 				} else {
 					selectedIndexes.clear();
-					selectedIndexes.push_back(lastSelectedIndex);
+					selectedIndexes[lastSelectedIndex] = true;
 					for (int i = 0; i < abs(index - lastSelectedIndex); i++) {
-						selectedIndexes.push_back(index > lastSelectedIndex ? lastSelectedIndex + 1 + i : index + i);
+						selectedIndexes[index > lastSelectedIndex ? lastSelectedIndex + 1 + i : index + i] = true;
 					}
 				}
 			} else {
 				// コントロールキーが押されていなかったら現在の選択範囲を消去
 				selectedIndexes.clear();
-				selectedIndexes.push_back(index);
+				selectedIndexes[index] = true;
 				lastSelectedIndex = index;
 			}
 			InvalidateRect(hWnd, NULL, TRUE);
@@ -295,7 +294,7 @@ void ListViewEx::OnPaint(HWND hWnd) {
 		auto y = rowHeight * count - verticalScrollInfo.nPos;
 
 		// 選択されていたら背景を描画
-		if (std::find(selectedIndexes.begin(), selectedIndexes.end(), count) != selectedIndexes.end()) {
+		if (selectedIndexes[count]) {
 			RECT background = { 0, y, rowWidth, y + rowHeight };
 			FillRect(hdc, &background, colorBrush);
 		}
