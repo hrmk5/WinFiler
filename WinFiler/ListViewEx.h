@@ -42,6 +42,7 @@ private:
 	std::vector<ListViewExColumn> columns;
 	HFONT font;
 	int rowHeight;
+	int rowWidth;
 
 	static LRESULT CALLBACK WndProc_(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 	LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);

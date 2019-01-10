@@ -2,7 +2,7 @@
 
 constexpr int ROW_SPACE = 3;
 
-ListViewEx::ListViewEx(HWND hWnd, HMENU id) {
+ListViewEx::ListViewEx(HWND hWnd, HMENU id) : rowWidth(0) {
 	this->hWnd = CreateWindow(
 		WC_ENTRYLISTVIEW, NULL, 
 		WS_CHILD | WS_VISIBLE,
@@ -26,6 +26,7 @@ void ListViewEx::Register() {
 
 void ListViewEx::AddColumn(const ListViewExColumn& column) {
 	columns.push_back(column);
+	rowWidth += column.width;
 }
 
 void ListViewEx::AddItem(const std::any& value) {
@@ -199,16 +200,18 @@ void ListViewEx::OnMouseMove(HWND hWnd, int x, int y, UINT keyFlags) {
 
 void ListViewEx::OnLButtonDown(HWND hWnd, BOOL doubleClick, int x, int y, UINT keyFlags) {
 	if (!doubleClick) {
-		// 垂直スクロールバーを取得
-		SCROLLINFO si;
-		si.cbSize = sizeof(si);
-		si.fMask = SIF_POS;
-		GetScrollInfo(hWnd, SB_VERT, &si);
+		if (x < rowWidth) {
+			// 垂直スクロールバーを取得
+			SCROLLINFO si;
+			si.cbSize = sizeof(si);
+			si.fMask = SIF_POS;
+			GetScrollInfo(hWnd, SB_VERT, &si);
 
-		int index = (y + si.nPos) / rowHeight;
-		selection.start = index;
-		selection.end = index;
-		InvalidateRect(hWnd, NULL, TRUE);
+			int index = (y + si.nPos) / rowHeight;
+			selection.start = index;
+			selection.end = index;
+			InvalidateRect(hWnd, NULL, TRUE);
+		}
 	}
 }
 
@@ -258,21 +261,20 @@ void ListViewEx::OnPaint(HWND hWnd) {
 
 	SetBkMode(hdc, TRANSPARENT);
 	SetTextColor(hdc, RGB(0, 0, 0));
+
 	int count = 0;
-	int maxX = 0;
-	int maxY = 0;
 	for (const auto& item : items) {
 		// 描画する Y 座標
 		auto y = rowHeight * count - verticalScrollInfo.nPos;
 		// カーソルが重なっていたら背景を描画
-		if (cursorPos.y >= y && cursorPos.y < y + rowHeight) {
-			RECT background = { 0, y, rect.right, y + rowHeight };
+		if (cursorPos.y >= y && cursorPos.y < y + rowHeight && cursorPos.x < rowWidth) {
+			RECT background = { 0, y, rowWidth, y + rowHeight };
 			FillRect(hdc, &background, hoverBrush);
 		}
 
 		// 選択されていたら背景を描画
 		if (count >= selection.start && count <= selection.end) {
-			RECT background = { 0, y, rect.right, y + rowHeight };
+			RECT background = { 0, y, rowWidth, y + rowHeight };
 			FillRect(hdc, &background, colorBrush);
 		}
 
@@ -286,10 +288,10 @@ void ListViewEx::OnPaint(HWND hWnd) {
 			x += column.width;
 		}
 
-		maxX = x;
 		count++;
 	}
-	maxY = rowHeight * count;
+
+	int maxY = rowHeight * count;
 
 	BitBlt(_hdc, 0, 0, rect.right, rect.bottom, hdc, 0, 0, SRCCOPY);
 
@@ -305,6 +307,6 @@ void ListViewEx::OnPaint(HWND hWnd) {
 
 	// 平行スクロールバー
 	horizontalScrollInfo.nPage = rect.right;
-	horizontalScrollInfo.nMax = maxX;
+	horizontalScrollInfo.nMax = rowWidth;
 	SetScrollInfo(hWnd, SB_HORZ, &horizontalScrollInfo, TRUE);
 }
