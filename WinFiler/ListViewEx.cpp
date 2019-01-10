@@ -294,13 +294,16 @@ void ListViewEx::OnPaint(HWND hWnd) {
 		auto y = rowHeight * count - verticalScrollInfo.nPos;
 
 		// ‘I‘ð‚³‚ê‚Ä‚¢‚½‚ç”wŒi‚ð•`‰æ
+		RECT background = { 0, y, rowWidth, y + rowHeight };
 		if (selectedIndexes[count]) {
-			RECT background = { 0, y, rowWidth, y + rowHeight };
 			FillRect(hdc, &background, colorBrush);
+			background.left += 1;
+			background.top += 1;
+			background.right -= 1;
+			background.bottom -= 1;
 		}
 		// ƒJ[ƒ\ƒ‹‚ªd‚È‚Á‚Ä‚¢‚½‚ç”wŒi‚ð•`‰æ
 		if (cursorPos.y >= y && cursorPos.y < y + rowHeight && cursorPos.x < rowWidth) {
-			RECT background = { 0, y, rowWidth, y + rowHeight };
 			FillRect(hdc, &background, hoverBrush);
 		}
 
