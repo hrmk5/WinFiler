@@ -16,8 +16,15 @@ struct ListViewExColumn {
 	std::function<std::wstring(std::any v)> get;
 };
 
+struct ListViewExSelection {
+	int start;
+	int end;
+};
+
 class ListViewEx {
 public:
+	ListViewExSelection selection;
+
 	ListViewEx(HWND hWnd, HMENU id);
 
 	static void Register();
@@ -30,6 +37,7 @@ private:
 	HWND hWnd;
 
 	HBRUSH hoverBrush;
+	HBRUSH colorBrush;
 	std::vector<std::any> items;
 	std::vector<ListViewExColumn> columns;
 	HFONT font;
@@ -43,6 +51,7 @@ private:
 	void OnMouseWheel(HWND hWnd, int xPos, int yPos, int zDelta, UINT fwKeys);
 	void OnMouseHWheel(HWND hWnd, int delta);
 	void OnMouseMove(HWND hWnd, int x, int y, UINT keyFlags);
+	void OnLButtonDown(HWND hwnd, BOOL fDoubleClick, int x, int y, UINT keyFlags);
 	void OnSetFont(HWND hWndCtl, HFONT hfont, BOOL fRedraw);
 	void OnPaint(HWND hWnd);
 };

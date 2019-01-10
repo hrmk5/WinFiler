@@ -10,6 +10,7 @@ ListViewEx::ListViewEx(HWND hWnd, HMENU id) {
 		hWnd, id, NULL, this);
 
 	hoverBrush = CreateSolidBrush(RGB(220, 220, 220));
+	colorBrush = CreateSolidBrush(RGB(126, 229, 162));
 }
 
 void ListViewEx::Register() {
@@ -58,6 +59,7 @@ LRESULT CALLBACK ListViewEx::WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM 
 	HANDLE_MSG(hwnd, WM_HSCROLL, OnHScroll);
 	HANDLE_MSG(hwnd, WM_MOUSEWHEEL, OnMouseWheel);
 	HANDLE_MSG(hwnd, WM_MOUSEMOVE, OnMouseMove);
+	HANDLE_MSG(hwnd, WM_LBUTTONDOWN, OnLButtonDown);
 	HANDLE_MSG(hwnd, WM_SETFONT, OnSetFont);
 	HANDLE_MSG(hwnd, WM_PAINT, OnPaint);
 	case WM_MOUSEHWHEEL:
@@ -195,6 +197,21 @@ void ListViewEx::OnMouseMove(HWND hWnd, int x, int y, UINT keyFlags) {
 	InvalidateRect(hWnd, NULL, TRUE);
 }
 
+void ListViewEx::OnLButtonDown(HWND hWnd, BOOL doubleClick, int x, int y, UINT keyFlags) {
+	if (!doubleClick) {
+		// 垂直スクロールバーを取得
+		SCROLLINFO si;
+		si.cbSize = sizeof(si);
+		si.fMask = SIF_POS;
+		GetScrollInfo(hWnd, SB_VERT, &si);
+
+		int index = (y + si.nPos) / rowHeight;
+		selection.start = index;
+		selection.end = index;
+		InvalidateRect(hWnd, NULL, TRUE);
+	}
+}
+
 void ListViewEx::OnSetFont(HWND hWndCtl, HFONT hFont, BOOL fRedraw) {
 	font = hFont;
 	// フォントの高さを取得
@@ -251,6 +268,12 @@ void ListViewEx::OnPaint(HWND hWnd) {
 		if (cursorPos.y >= y && cursorPos.y < y + rowHeight) {
 			RECT background = { 0, y, rect.right, y + rowHeight };
 			FillRect(hdc, &background, hoverBrush);
+		}
+
+		// 選択されていたら背景を描画
+		if (count >= selection.start && count <= selection.end) {
+			RECT background = { 0, y, rect.right, y + rowHeight };
+			FillRect(hdc, &background, colorBrush);
 		}
 
 		// 描画する X 座標
