@@ -32,9 +32,13 @@ private:
 
 	HBRUSH hoverBrush;
 	HBRUSH colorBrush;
+	HBRUSH backgroundBrush;
+
 	std::vector<std::any> items;
 	std::vector<ListViewExColumn> columns;
 	HFONT font;
+	int leftPadding;
+	int columnHeaderHeight;
 	int rowHeight;
 	int rowWidth;
 	std::map<int, bool> selectedIndexes;

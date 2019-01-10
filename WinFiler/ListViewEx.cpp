@@ -2,7 +2,7 @@
 
 constexpr int ROW_SPACE = 4;
 
-ListViewEx::ListViewEx(HWND hWnd, HMENU id) : rowWidth(0) {
+ListViewEx::ListViewEx(HWND hWnd, HMENU id) : rowWidth(0), leftPadding(5) {
 	this->hWnd = CreateWindow(
 		WC_ENTRYLISTVIEW, NULL, 
 		WS_CHILD | WS_VISIBLE,
@@ -11,6 +11,7 @@ ListViewEx::ListViewEx(HWND hWnd, HMENU id) : rowWidth(0) {
 
 	hoverBrush = CreateSolidBrush(RGB(220, 220, 220));
 	colorBrush = CreateSolidBrush(RGB(126, 229, 162));
+	backgroundBrush = CreateSolidBrush(RGB(255, 255, 255));
 }
 
 void ListViewEx::Register() {
@@ -201,42 +202,45 @@ void ListViewEx::OnMouseMove(HWND hWnd, int x, int y, UINT keyFlags) {
 void ListViewEx::OnLButtonDown(HWND hWnd, BOOL doubleClick, int x, int y, UINT keyFlags) {
 	if (!doubleClick) {
 		if (x < rowWidth) {
-
 			// 垂直スクロールバーを取得
 			SCROLLINFO si;
 			si.cbSize = sizeof(si);
 			si.fMask = SIF_POS;
 			GetScrollInfo(hWnd, SB_VERT, &si);
 
-			int index = (y + si.nPos) / rowHeight;
-
-			if (keyFlags & MK_CONTROL) {
-				// コントロールキーを押していて、既に選択されていたら選択を解除する
-				if (selectedIndexes[index]) {
-					selectedIndexes[index] = false;
-				} else {
-					selectedIndexes[index] = true;
-					lastSelectedIndex = index;
-				}
-			} else if (keyFlags & MK_SHIFT) {
-				// シフトキーを押していたら最後に選択した項目までのすべての項目を選択
-				if (selectedIndexes.empty()) {
-					selectedIndexes[index] = true;
-					lastSelectedIndex = index;
-				} else {
-					selectedIndexes.clear();
-					selectedIndexes[lastSelectedIndex] = true;
-					for (int i = 0; i < abs(index - lastSelectedIndex); i++) {
-						selectedIndexes[index > lastSelectedIndex ? lastSelectedIndex + 1 + i : index + i] = true;
-					}
-				}
+			if (y < columnHeaderHeight) {
+				// TODO: 見出しにクリックした場合はソート
 			} else {
-				// コントロールキーが押されていなかったら現在の選択範囲を消去
-				selectedIndexes.clear();
-				selectedIndexes[index] = true;
-				lastSelectedIndex = index;
+				int index = (y + si.nPos - columnHeaderHeight) / rowHeight;
+
+				if (keyFlags & MK_CONTROL) {
+					// コントロールキーを押していて、既に選択されていたら選択を解除する
+					if (selectedIndexes[index]) {
+						selectedIndexes[index] = false;
+					} else {
+						selectedIndexes[index] = true;
+						lastSelectedIndex = index;
+					}
+				} else if (keyFlags & MK_SHIFT) {
+					// シフトキーを押していたら最後に選択した項目までのすべての項目を選択
+					if (selectedIndexes.empty()) {
+						selectedIndexes[index] = true;
+						lastSelectedIndex = index;
+					} else {
+						selectedIndexes.clear();
+						selectedIndexes[lastSelectedIndex] = true;
+						for (int i = 0; i < abs(index - lastSelectedIndex); i++) {
+							selectedIndexes[index > lastSelectedIndex ? lastSelectedIndex + 1 + i : index + i] = true;
+						}
+					}
+				} else {
+					// コントロールキーが押されていなかったら現在の選択範囲を消去
+					selectedIndexes.clear();
+					selectedIndexes[index] = true;
+					lastSelectedIndex = index;
+				}
+				InvalidateRect(hWnd, NULL, TRUE);
 			}
-			InvalidateRect(hWnd, NULL, TRUE);
 		}
 	}
 }
@@ -250,6 +254,7 @@ void ListViewEx::OnSetFont(HWND hWndCtl, HFONT hFont, BOOL fRedraw) {
 	GetTextMetrics(hdc, &metrics);
 	// 行の高さを計算
 	rowHeight = metrics.tmHeight + ROW_SPACE;
+	columnHeaderHeight = metrics.tmHeight + 10;
 }
 
 void ListViewEx::OnPaint(HWND hWnd) {
@@ -291,7 +296,7 @@ void ListViewEx::OnPaint(HWND hWnd) {
 	int count = 0;
 	for (const auto& item : items) {
 		// 描画する Y 座標
-		auto y = rowHeight * count - verticalScrollInfo.nPos;
+		auto y = columnHeaderHeight + rowHeight * count - verticalScrollInfo.nPos;
 
 		// 選択されていたら背景を描画
 		RECT background = { 0, y, rowWidth, y + rowHeight };
@@ -320,7 +325,17 @@ void ListViewEx::OnPaint(HWND hWnd) {
 		count++;
 	}
 
-	int maxY = rowHeight * count;
+	// 列の見出しを描画
+	SetTextColor(hdc, RGB(100, 100, 100));
+	int headerX = 0;
+	for (const auto& column : columns) {
+		RECT headerRect = { headerX, 0, headerX + column.width, columnHeaderHeight };
+		FillRect(hdc, &headerRect, backgroundBrush);
+		DrawText(hdc, column.header.c_str(), -1, &headerRect, DT_SINGLELINE | DT_VCENTER);
+		headerX += column.width;
+	}
+
+	int maxY = columnHeaderHeight + (rowHeight * count);
 
 	BitBlt(_hdc, 0, 0, rect.right, rect.bottom, hdc, 0, 0, SRCCOPY);
 
