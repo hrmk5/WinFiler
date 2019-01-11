@@ -330,7 +330,7 @@ void ListViewEx::OnPaint(HWND hWnd) {
 			if (icon != nullptr) {
 				ICONINFO iconInfo;
 				GetIconInfo(icon, &iconInfo);
-				DrawIconEx(hdc, x + leftPadding, y + ((rowHeight - ICON_SIZE) / 2), icon, ICON_SIZE, ICON_SIZE, 0, NULL, DI_NORMAL);
+				DrawIconEx(hdc, x + leftPadding - horizontalScrollInfo.nPos, y + ((rowHeight - ICON_SIZE) / 2), icon, ICON_SIZE, ICON_SIZE, 0, NULL, DI_NORMAL);
 				textX += ICON_SIZE + 3 + leftPadding;
 			}
 
@@ -350,15 +350,15 @@ void ListViewEx::OnPaint(HWND hWnd) {
 	bool splitterHover = false;
 	for (const auto& column : columns) {
 		// 背景
-		RECT backgroundRect{ headerX + 1, 0, headerX + column.width, columnHeaderHeight };
+		RECT backgroundRect{ headerX + 1 - horizontalScrollInfo.nPos, 0, headerX + column.width - horizontalScrollInfo.nPos, columnHeaderHeight };
 		FillRect(hdc, &backgroundRect, backgroundBrush);
 
 		// 見出し文字列
-		RECT headerRect{ headerX + leftPadding, 0, headerX + column.width, columnHeaderHeight };
+		RECT headerRect{ headerX + leftPadding - horizontalScrollInfo.nPos, 0, headerX + column.width - horizontalScrollInfo.nPos, columnHeaderHeight };
 		DrawText(hdc, column.header.c_str(), -1, &headerRect, DT_SINGLELINE | DT_VCENTER);
 
 		// 分割バー
-		RECT splitterRect{ headerX + column.width, 0, headerX + column.width + 1, columnHeaderHeight };
+		RECT splitterRect{ headerX + column.width - horizontalScrollInfo.nPos, 0, headerX + column.width + 1 - horizontalScrollInfo.nPos, columnHeaderHeight };
 		if (cursorPos.x > splitterRect.left - 5 && cursorPos.x < splitterRect.right + 5 &&
 			cursorPos.y < splitterRect.bottom && cursorPos.y > 0) {
 			// マウスが重なっていたら灰色で描画する
