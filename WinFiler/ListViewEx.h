@@ -38,6 +38,7 @@ private:
 	std::vector<std::any> items;
 	std::vector<ListViewExColumn> columns;
 	HFONT font;
+	HCURSOR currentCursor;
 	int leftPadding;
 	int columnHeaderHeight;
 	int rowHeight;
@@ -55,5 +56,6 @@ private:
 	void OnMouseMove(HWND hWnd, int x, int y, UINT keyFlags);
 	void OnLButtonDown(HWND hwnd, BOOL fDoubleClick, int x, int y, UINT keyFlags);
 	void OnSetFont(HWND hWndCtl, HFONT hfont, BOOL fRedraw);
+	BOOL OnSetCursor(HWND hWnd, HWND hWndCursor, UINT codeHitTest, UINT msg);
 	void OnPaint(HWND hWnd);
 };

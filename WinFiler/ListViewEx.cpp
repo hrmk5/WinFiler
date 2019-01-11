@@ -3,7 +3,7 @@
 constexpr int ROW_SPACE = 4;
 constexpr int ICON_SIZE = 16;
 
-ListViewEx::ListViewEx(HWND hWnd, HMENU id) : rowWidth(0), leftPadding(5) {
+ListViewEx::ListViewEx(HWND hWnd, HMENU id) : rowWidth(0), leftPadding(7) {
 	this->hWnd = CreateWindow(
 		WC_ENTRYLISTVIEW, NULL, 
 		WS_CHILD | WS_VISIBLE,
@@ -13,6 +13,7 @@ ListViewEx::ListViewEx(HWND hWnd, HMENU id) : rowWidth(0), leftPadding(5) {
 	hoverBrush = CreateSolidBrush(RGB(220, 220, 220));
 	colorBrush = CreateSolidBrush(RGB(126, 229, 162));
 	backgroundBrush = CreateSolidBrush(RGB(255, 255, 255));
+	currentCursor = LoadCursor(NULL, IDC_ARROW);
 }
 
 void ListViewEx::Register() {
@@ -64,6 +65,7 @@ LRESULT CALLBACK ListViewEx::WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM 
 	HANDLE_MSG(hwnd, WM_MOUSEMOVE, OnMouseMove);
 	HANDLE_MSG(hwnd, WM_LBUTTONDOWN, OnLButtonDown);
 	HANDLE_MSG(hwnd, WM_SETFONT, OnSetFont);
+	HANDLE_MSG(hwnd, WM_SETCURSOR, OnSetCursor);
 	HANDLE_MSG(hwnd, WM_PAINT, OnPaint);
 	case WM_MOUSEHWHEEL:
 		OnMouseHWheel(hwnd, HIWORD(wParam));
@@ -258,6 +260,11 @@ void ListViewEx::OnSetFont(HWND hWndCtl, HFONT hFont, BOOL fRedraw) {
 	columnHeaderHeight = metrics.tmHeight + 10;
 }
 
+BOOL ListViewEx::OnSetCursor(HWND hWnd, HWND hWndCursor, UINT codeHitTest, UINT msg) {
+	SetCursor(currentCursor);
+	return FALSE;
+}
+
 void ListViewEx::OnPaint(HWND hWnd) {
 	// 画面のサイズを取得
 	RECT rect;
@@ -323,15 +330,15 @@ void ListViewEx::OnPaint(HWND hWnd) {
 			if (icon != nullptr) {
 				ICONINFO iconInfo;
 				GetIconInfo(icon, &iconInfo);
-				DrawIconEx(hdc, 0, y + ((rowHeight - ICON_SIZE) / 2), icon, ICON_SIZE, ICON_SIZE, 0, NULL, DI_NORMAL);
-				textX += ICON_SIZE + 3;
+				DrawIconEx(hdc, x + leftPadding, y + ((rowHeight - ICON_SIZE) / 2), icon, ICON_SIZE, ICON_SIZE, 0, NULL, DI_NORMAL);
+				textX += ICON_SIZE + 3 + leftPadding;
 			}
 
 			// 文字列を描画
 			RECT textRect = { textX - horizontalScrollInfo.nPos, y, textX - horizontalScrollInfo.nPos + column.width - (textX - x), y + rowHeight };
 			DrawText(hdc, column.get(item).c_str(), -1, &textRect, DT_SINGLELINE | DT_VCENTER);
 
-			x += column.width;
+			x += column.width + leftPadding;
 		}
 
 		count++;
@@ -340,11 +347,35 @@ void ListViewEx::OnPaint(HWND hWnd) {
 	// 列の見出しを描画
 	SetTextColor(hdc, RGB(100, 100, 100));
 	int headerX = 0;
+	bool splitterHover = false;
 	for (const auto& column : columns) {
-		RECT headerRect = { headerX, 0, headerX + column.width, columnHeaderHeight };
-		FillRect(hdc, &headerRect, backgroundBrush);
+		// 背景
+		RECT backgroundRect{ headerX + 1, 0, headerX + column.width, columnHeaderHeight };
+		FillRect(hdc, &backgroundRect, backgroundBrush);
+
+		// 見出し文字列
+		RECT headerRect{ headerX + leftPadding, 0, headerX + column.width, columnHeaderHeight };
 		DrawText(hdc, column.header.c_str(), -1, &headerRect, DT_SINGLELINE | DT_VCENTER);
+
+		// 分割バー
+		RECT splitterRect{ headerX + column.width, 0, headerX + column.width + 1, columnHeaderHeight };
+		if (cursorPos.x > splitterRect.left - 5 && cursorPos.x < splitterRect.right + 5 &&
+			cursorPos.y < splitterRect.bottom && cursorPos.y > 0) {
+			// マウスが重なっていたら灰色で描画する
+			FillRect(hdc, &splitterRect, hoverBrush);
+			splitterHover = true;
+		} else {
+			FillRect(hdc, &splitterRect, colorBrush);
+		}
 		headerX += column.width;
+	}
+
+	if (splitterHover) {
+		// 分割バーにマウスが重なっていたらカーソルを変更
+		currentCursor = LoadCursor(NULL, IDC_SIZEWE);
+	} else {
+		// 重なっていなかったら元に戻す
+		currentCursor = LoadCursor(NULL, IDC_ARROW);
 	}
 
 	int maxY = columnHeaderHeight + (rowHeight * count);
