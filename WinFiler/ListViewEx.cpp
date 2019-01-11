@@ -2,6 +2,7 @@
 
 constexpr int ROW_SPACE = 4;
 constexpr int ICON_SIZE = 16;
+constexpr int MIN_COLUMN_WIDTH = 15;
 
 ListViewEx::ListViewEx(HWND hWnd, HMENU id) : rowWidth(0), leftPadding(7) {
 	this->hWnd = CreateWindow(
@@ -64,6 +65,7 @@ LRESULT CALLBACK ListViewEx::WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM 
 	HANDLE_MSG(hwnd, WM_MOUSEWHEEL, OnMouseWheel);
 	HANDLE_MSG(hwnd, WM_MOUSEMOVE, OnMouseMove);
 	HANDLE_MSG(hwnd, WM_LBUTTONDOWN, OnLButtonDown);
+	HANDLE_MSG(hwnd, WM_LBUTTONUP, OnLButtonUp);
 	HANDLE_MSG(hwnd, WM_SETFONT, OnSetFont);
 	HANDLE_MSG(hwnd, WM_SETCURSOR, OnSetCursor);
 	HANDLE_MSG(hwnd, WM_PAINT, OnPaint);
@@ -212,6 +214,10 @@ void ListViewEx::OnLButtonDown(HWND hWnd, BOOL doubleClick, int x, int y, UINT k
 			GetScrollInfo(hWnd, SB_VERT, &si);
 
 			if (y < columnHeaderHeight) {
+				if (hoveringSplitterColumn != nullptr) {
+					// 分割バーがクリックされていた場合は現在の列の幅を保存する
+					splitterIsMoving = true;
+				}
 				// TODO: 見出しにクリックした場合はソート
 			} else {
 				int index = (y + si.nPos - columnHeaderHeight) / rowHeight;
@@ -246,6 +252,11 @@ void ListViewEx::OnLButtonDown(HWND hWnd, BOOL doubleClick, int x, int y, UINT k
 			}
 		}
 	}
+}
+
+void ListViewEx::OnLButtonUp(HWND hWnd, int x, int y, UINT keyFlags) {
+	hoveringSplitterColumn = nullptr;
+	splitterIsMoving = false;
 }
 
 void ListViewEx::OnSetFont(HWND hWndCtl, HFONT hFont, BOOL fRedraw) {
@@ -348,34 +359,47 @@ void ListViewEx::OnPaint(HWND hWnd) {
 	SetTextColor(hdc, RGB(100, 100, 100));
 	int headerX = 0;
 	bool splitterHover = false;
-	for (const auto& column : columns) {
+	for (auto& column : columns) {
+		if (hoveringSplitterColumn == &column && splitterIsMoving) {
+			column.width = cursorPos.x - headerX;
+			if (column.width <= MIN_COLUMN_WIDTH) {
+				column.width = MIN_COLUMN_WIDTH;
+			}
+		}
+		int right = headerX + column.width - horizontalScrollInfo.nPos;
+
 		// 背景
-		RECT backgroundRect{ headerX + 1 - horizontalScrollInfo.nPos, 0, headerX + column.width - horizontalScrollInfo.nPos, columnHeaderHeight };
+		RECT backgroundRect{ headerX + 1 - horizontalScrollInfo.nPos, 0, right, columnHeaderHeight };
 		FillRect(hdc, &backgroundRect, backgroundBrush);
 
 		// 見出し文字列
-		RECT headerRect{ headerX + leftPadding - horizontalScrollInfo.nPos, 0, headerX + column.width - horizontalScrollInfo.nPos, columnHeaderHeight };
+		RECT headerRect{ headerX + leftPadding - horizontalScrollInfo.nPos, 0, right, columnHeaderHeight };
 		DrawText(hdc, column.header.c_str(), -1, &headerRect, DT_SINGLELINE | DT_VCENTER);
 
 		// 分割バー
-		RECT splitterRect{ headerX + column.width - horizontalScrollInfo.nPos, 0, headerX + column.width + 1 - horizontalScrollInfo.nPos, columnHeaderHeight };
+		RECT splitterRect{ right, 0, right + 1, columnHeaderHeight };
 		if (cursorPos.x > splitterRect.left - 5 && cursorPos.x < splitterRect.right + 5 &&
 			cursorPos.y < splitterRect.bottom && cursorPos.y > 0) {
 			// マウスが重なっていたら灰色で描画する
 			FillRect(hdc, &splitterRect, hoverBrush);
 			splitterHover = true;
+			if (hoveringSplitterColumn == nullptr) {
+				hoveringSplitterColumn = &column;
+			}
 		} else {
 			FillRect(hdc, &splitterRect, colorBrush);
 		}
 		headerX += column.width;
 	}
+	rowWidth = headerX;
 
-	if (splitterHover) {
+	if (splitterHover || splitterIsMoving) {
 		// 分割バーにマウスが重なっていたらカーソルを変更
 		currentCursor = LoadCursor(NULL, IDC_SIZEWE);
 	} else {
 		// 重なっていなかったら元に戻す
 		currentCursor = LoadCursor(NULL, IDC_ARROW);
+		hoveringSplitterColumn = nullptr;
 	}
 
 	int maxY = columnHeaderHeight + (rowHeight * count);

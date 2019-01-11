@@ -45,6 +45,8 @@ private:
 	int rowWidth;
 	std::map<int, bool> selectedIndexes;
 	int lastSelectedIndex;
+	const ListViewExColumn* hoveringSplitterColumn;
+	bool splitterIsMoving = false;
 
 	static LRESULT CALLBACK WndProc_(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 	LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
@@ -54,7 +56,8 @@ private:
 	void OnMouseWheel(HWND hWnd, int xPos, int yPos, int zDelta, UINT fwKeys);
 	void OnMouseHWheel(HWND hWnd, int delta);
 	void OnMouseMove(HWND hWnd, int x, int y, UINT keyFlags);
-	void OnLButtonDown(HWND hwnd, BOOL fDoubleClick, int x, int y, UINT keyFlags);
+	void OnLButtonDown(HWND hWnd, BOOL fDoubleClick, int x, int y, UINT keyFlags);
+	void OnLButtonUp(HWND hWnd, int x, int y, UINT keyFlags);
 	void OnSetFont(HWND hWndCtl, HFONT hfont, BOOL fRedraw);
 	BOOL OnSetCursor(HWND hWnd, HWND hWndCursor, UINT codeHitTest, UINT msg);
 	void OnPaint(HWND hWnd);
