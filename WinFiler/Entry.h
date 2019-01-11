@@ -10,6 +10,7 @@ enum class EntryType {
 
 struct Entry {
 	EntryType type;
+	HICON icon;
 	std::wstring name;
 	std::wstring path;
 	long size;

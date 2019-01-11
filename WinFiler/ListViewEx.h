@@ -14,7 +14,8 @@
 struct ListViewExColumn {
 	int width;
 	std::wstring header;
-	std::function<std::wstring(std::any v)> get;
+	std::function<std::wstring(const std::any& v)> get;
+	std::function<HICON(const std::any& v)> getIcon = [](const std::any& v) { return nullptr; };
 };
 
 class ListViewEx {

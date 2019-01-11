@@ -1,6 +1,7 @@
 #include "ListViewEx.h"
 
 constexpr int ROW_SPACE = 4;
+constexpr int ICON_SIZE = 16;
 
 ListViewEx::ListViewEx(HWND hWnd, HMENU id) : rowWidth(0), leftPadding(5) {
 	this->hWnd = CreateWindow(
@@ -315,8 +316,19 @@ void ListViewEx::OnPaint(HWND hWnd) {
 		// ï`âÊÇ∑ÇÈ X ç¿ïW
 		int x = 0;
 		for (const auto& column : columns) {
+			int textX = x;
+
+			// ÉAÉCÉRÉìÇï`âÊ
+			auto icon = column.getIcon(item);
+			if (icon != nullptr) {
+				ICONINFO iconInfo;
+				GetIconInfo(icon, &iconInfo);
+				DrawIconEx(hdc, 0, y + ((rowHeight - ICON_SIZE) / 2), icon, ICON_SIZE, ICON_SIZE, 0, NULL, DI_NORMAL);
+				textX += ICON_SIZE + 3;
+			}
+
 			// ï∂éöóÒÇï`âÊ
-			RECT textRect = { x - horizontalScrollInfo.nPos, y, x - horizontalScrollInfo.nPos + column.width, y + rowHeight };
+			RECT textRect = { textX - horizontalScrollInfo.nPos, y, textX - horizontalScrollInfo.nPos + column.width - (textX - x), y + rowHeight };
 			DrawText(hdc, column.get(item).c_str(), -1, &textRect, DT_SINGLELINE | DT_VCENTER);
 
 			x += column.width;

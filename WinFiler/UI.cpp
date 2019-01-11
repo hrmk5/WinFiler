@@ -29,6 +29,11 @@ void UI::initialize(HWND hWnd) {
 		auto entry = std::any_cast<Entry>(item);
 		return entry.name;
 	};
+	column.getIcon = [](const std::any& item) {
+		auto entry = std::any_cast<Entry>(item);
+		return entry.icon;
+	};
+
 	entryListView->AddColumn(column);
 
 	// 最終更新日時
@@ -43,6 +48,7 @@ void UI::initialize(HWND hWnd) {
 			return std::wstring(L"");
 		}
 	};
+	column.getIcon = [](const std::any& item) { return nullptr;  };
 	entryListView->AddColumn(column);
 
 	// サイズ
@@ -114,6 +120,7 @@ void UI::changeDirectory(const std::wstring& directory) {
 			SHGetFileInfo(entry.path.c_str(), FILE_ATTRIBUTE_NORMAL, &sfi, sizeof(sfi), SHGFI_ICON | SHGFI_SMALLICON);
 			icon = sfi.hIcon;
 		}
+		entry.icon = icon;
 
 		entries.push_back(entry);
 		entryListView->AddItem(entry);
