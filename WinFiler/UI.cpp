@@ -41,12 +41,8 @@ void UI::initialize(HWND hWnd) {
 	column.header = L"ç≈èIçXêVì˙éû";
 	column.get = [](const std::any& item) {
 		auto entry = std::any_cast<Entry>(item);
-		if (entry.type == EntryType::FILE) {
-			return fmt::format(L"{}/{:0>2}/{:0>2} {:0>2}:{:0>2}",
-				entry.time.wYear, entry.time.wMonth, entry.time.wDay, entry.time.wHour, entry.time.wMinute, entry.time.wSecond);
-		} else {
-			return std::wstring(L"");
-		}
+		return fmt::format(L"{}/{:0>2}/{:0>2} {:0>2}:{:0>2}",
+			entry.time.wYear, entry.time.wMonth, entry.time.wDay, entry.time.wHour, entry.time.wMinute, entry.time.wSecond);
 	};
 	column.getIcon = [](const std::any& item) { return nullptr;  };
 	entryListView->AddColumn(column);
@@ -97,6 +93,10 @@ void UI::changeDirectory(const std::wstring& directory) {
 		wchar_t path[256];
 		PathCombine(path, directory.c_str(), entry.name.c_str());
 		entry.path = path;
+		// Last modified time
+		FILETIME localTime;
+		FileTimeToLocalFileTime(&findData.ftLastWriteTime, &localTime);
+		FileTimeToSystemTime(&localTime, &entry.time);
 
 		if (findData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) {
 			entry.type = EntryType::DIRECTORY;
@@ -104,8 +104,6 @@ void UI::changeDirectory(const std::wstring& directory) {
 			entry.type = EntryType::FILE;
 			// Size
 			entry.size = MAKELONG(findData.nFileSizeLow, findData.nFileSizeHigh);
-			// Last modified time
-			FileTimeToSystemTime(&findData.ftLastWriteTime, &entry.time);
 		}
 
 		// Get file icon
