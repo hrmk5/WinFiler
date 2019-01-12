@@ -480,7 +480,7 @@ void ListViewEx::OnPaint(HWND hWnd) {
 
 	int maxY = columnHeaderHeight + (rowHeight * count);
 
-	BitBlt(_hdc, 0, 0, rect.right, rect.bottom, hdc, 0, 0, SRCCOPY);
+	BitBlt(_hdc, rect.left, rect.top, rect.right, rect.bottom, hdc, 0, 0, SRCCOPY);
 
 	DeleteObject(bitmap);
 	DeleteDC(hdc);

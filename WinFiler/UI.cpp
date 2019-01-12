@@ -72,7 +72,7 @@ void UI::onNotify(LPARAM lParam) {
 }
 
 void UI::onResize(int width, int height) {
-	MoveWindow(pathEdit, 5, 5, width - 10, 25, FALSE);
+	MoveWindow(pathEdit, 5, 5, width - 10, 25, TRUE);
 	entryListView->Move(5, 35, width - 10, height - 40, true);
 }
 
