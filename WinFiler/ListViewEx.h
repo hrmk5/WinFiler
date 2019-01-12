@@ -18,15 +18,39 @@ struct ListViewExColumn {
 	std::function<HICON(const std::any& v)> getIcon = [](const std::any& v) { return nullptr; };
 };
 
+enum class ButtonType {
+	LEFT,
+	RIGHT,
+	MIDDLE,
+	X1,
+	X2,
+};
+
+enum class ListViewExClickedLocation {
+	HEADER,
+	ITEM,
+	SPLITTER,
+};
+
+struct ListViewExOptions {
+	// çÄñ⁄Ç™ëIëÇ≥ÇÍÇƒÇ¢Ç»Ç¢èÍçáÇÕ index Ç™ -1ÅAitem Ç™ nullptr Ç…Ç»ÇÈ
+	std::function<void(ButtonType type, ListViewExClickedLocation location)> OnDoubleClicked = [](ButtonType t, ListViewExClickedLocation l) {};
+	std::function<void(ButtonType type, ListViewExClickedLocation location)> OnMouseDown = [](ButtonType t, ListViewExClickedLocation l) {};;
+	std::function<void(ButtonType type, ListViewExClickedLocation location)> OnMouseUp = [](ButtonType t, ListViewExClickedLocation l) {};;
+};
+
 class ListViewEx {
 public:
-	ListViewEx(HWND hWnd, HMENU id);
+	explicit ListViewEx(HWND hWnd, HMENU id, ListViewExOptions* options);
 
 	static void Register();
 
 	void AddColumn(const ListViewExColumn& column);
 	void AddItem(const std::any& value);
 	void DeleteAllItems();
+	std::vector<ListViewExColumn> GetAllColumns();
+	std::vector<int> GetSelectedIndexes();
+	std::vector<std::any> GetSelectedItems();
 	void Move(int x, int y, int width, int height, bool repaint);
 private:
 	HWND hWnd;
@@ -35,6 +59,7 @@ private:
 	HBRUSH colorBrush;
 	HBRUSH backgroundBrush;
 
+	ListViewExOptions options;
 	std::vector<std::any> items;
 	std::vector<ListViewExColumn> columns;
 	HFONT font;
@@ -47,6 +72,8 @@ private:
 	int lastSelectedIndex;
 	const ListViewExColumn* hoveringSplitterColumn;
 	bool splitterIsMoving = false;
+
+	ListViewExClickedLocation GetClickedLocation();
 
 	static LRESULT CALLBACK WndProc_(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 	LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);

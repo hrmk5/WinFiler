@@ -4,7 +4,7 @@ constexpr int ROW_SPACE = 4;
 constexpr int ICON_SIZE = 16;
 constexpr int MIN_COLUMN_WIDTH = 15;
 
-ListViewEx::ListViewEx(HWND hWnd, HMENU id) : rowWidth(0), leftPadding(7) {
+ListViewEx::ListViewEx(HWND hWnd, HMENU id, ListViewExOptions* options) : rowWidth(0), leftPadding(7) {
 	this->hWnd = CreateWindow(
 		WC_ENTRYLISTVIEW, NULL, 
 		WS_CHILD | WS_VISIBLE,
@@ -15,6 +15,9 @@ ListViewEx::ListViewEx(HWND hWnd, HMENU id) : rowWidth(0), leftPadding(7) {
 	colorBrush = CreateSolidBrush(RGB(126, 229, 162));
 	backgroundBrush = CreateSolidBrush(RGB(255, 255, 255));
 	currentCursor = LoadCursor(NULL, IDC_ARROW);
+	if (options != nullptr) {
+		this->options = *options;
+	}
 }
 
 void ListViewEx::Register() {
@@ -41,6 +44,32 @@ void ListViewEx::DeleteAllItems() {
 	items.clear();
 }
 
+std::vector<ListViewExColumn> ListViewEx::GetAllColumns() {
+	return columns;
+}
+
+std::vector<int> ListViewEx::GetSelectedIndexes() {
+	std::vector<int> indexes;
+	for (const auto& [index, selected] : selectedIndexes) {
+		if (selected) {
+			indexes.push_back(index);
+		}
+	}
+
+	return indexes;
+}
+
+std::vector<std::any> ListViewEx::GetSelectedItems() {
+	std::vector<std::any> items;
+	for (const auto& [index, selected] : selectedIndexes) {
+		if (selected) {
+			items.push_back(items[index]);
+		}
+	}
+
+	return items;
+}
+
 void ListViewEx::Move(int x, int y, int width, int height, bool repaint) {
 	MoveWindow(hWnd, x, y, width, height, repaint);
 }
@@ -57,6 +86,19 @@ LRESULT CALLBACK ListViewEx::WndProc_(HWND hWnd, UINT msg, WPARAM wParam, LPARAM
 	return lv->WndProc(hWnd, msg, wParam, lParam);
 }
 
+ListViewExClickedLocation ListViewEx::GetClickedLocation() {
+	if (hoveringSplitterColumn != nullptr) {
+		return ListViewExClickedLocation::SPLITTER;
+	}
+
+	// カーソル位置を取得
+	POINT cursorPos;
+	GetCursorPos(&cursorPos);
+	ScreenToClient(hWnd, &cursorPos);
+
+	return cursorPos.y <= columnHeaderHeight ? ListViewExClickedLocation::HEADER : ListViewExClickedLocation::ITEM;
+}
+
 LRESULT CALLBACK ListViewEx::WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
 	switch (msg) {
 	HANDLE_MSG(hwnd, WM_CREATE, OnCreate);
@@ -69,6 +111,33 @@ LRESULT CALLBACK ListViewEx::WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM 
 	HANDLE_MSG(hwnd, WM_SETFONT, OnSetFont);
 	HANDLE_MSG(hwnd, WM_SETCURSOR, OnSetCursor);
 	HANDLE_MSG(hwnd, WM_PAINT, OnPaint);
+	case WM_RBUTTONDOWN:
+		options.OnMouseDown(ButtonType::RIGHT, GetClickedLocation());
+		return 0;
+	case WM_RBUTTONUP:
+		options.OnMouseUp(ButtonType::RIGHT, GetClickedLocation());
+		return 0;
+	case WM_RBUTTONDBLCLK:
+		options.OnDoubleClicked(ButtonType::RIGHT, GetClickedLocation());
+		return 0;
+	case WM_MBUTTONDOWN:
+		options.OnMouseDown(ButtonType::MIDDLE, GetClickedLocation());
+		return 0;
+	case WM_MBUTTONUP:
+		options.OnMouseUp(ButtonType::MIDDLE, GetClickedLocation());
+		return 0;
+	case WM_MBUTTONDBLCLK:
+		options.OnDoubleClicked(ButtonType::MIDDLE, GetClickedLocation());
+		return 0;
+	case WM_XBUTTONDOWN:
+		options.OnMouseDown(GET_XBUTTON_WPARAM(wParam) == XBUTTON1 ? ButtonType::X1 : ButtonType::X2, GetClickedLocation());
+		return 0;
+	case WM_XBUTTONUP:
+		options.OnMouseUp(GET_XBUTTON_WPARAM(wParam) == XBUTTON1 ? ButtonType::X1 : ButtonType::X2, GetClickedLocation());
+		return 0;
+	case WM_XBUTTONDBLCLK:
+		options.OnDoubleClicked(GET_XBUTTON_WPARAM(wParam) == XBUTTON1 ? ButtonType::X1 : ButtonType::X2, GetClickedLocation());
+		return 0;
 	case WM_MOUSEHWHEEL:
 		OnMouseHWheel(hwnd, HIWORD(wParam));
 		return 0;
@@ -205,6 +274,8 @@ void ListViewEx::OnMouseMove(HWND hWnd, int x, int y, UINT keyFlags) {
 }
 
 void ListViewEx::OnLButtonDown(HWND hWnd, BOOL doubleClick, int x, int y, UINT keyFlags) {
+	int index = -1;
+
 	if (!doubleClick) {
 		if (x < rowWidth) {
 			// 垂直スクロールバーを取得
@@ -220,7 +291,7 @@ void ListViewEx::OnLButtonDown(HWND hWnd, BOOL doubleClick, int x, int y, UINT k
 				}
 				// TODO: 見出しにクリックした場合はソート
 			} else {
-				int index = (y + si.nPos - columnHeaderHeight) / rowHeight;
+				index = (y + si.nPos - columnHeaderHeight) / rowHeight;
 
 				if (keyFlags & MK_CONTROL) {
 					// コントロールキーを押していて、既に選択されていたら選択を解除する
@@ -251,12 +322,17 @@ void ListViewEx::OnLButtonDown(HWND hWnd, BOOL doubleClick, int x, int y, UINT k
 				InvalidateRect(hWnd, NULL, TRUE);
 			}
 		}
+
+		options.OnDoubleClicked(ButtonType::LEFT, GetClickedLocation());
+	} else {
+		options.OnMouseDown(ButtonType::LEFT, GetClickedLocation());
 	}
 }
 
 void ListViewEx::OnLButtonUp(HWND hWnd, int x, int y, UINT keyFlags) {
 	hoveringSplitterColumn = nullptr;
 	splitterIsMoving = false;
+	options.OnMouseUp(ButtonType::LEFT, GetClickedLocation());
 }
 
 void ListViewEx::OnSetFont(HWND hWndCtl, HFONT hFont, BOOL fRedraw) {

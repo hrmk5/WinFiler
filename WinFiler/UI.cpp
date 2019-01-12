@@ -19,7 +19,7 @@ void UI::initialize(HWND hWnd) {
 		L"EDIT", L"C:\\", WS_CHILD | WS_VISIBLE | WS_BORDER | ES_LEFT,
 		0, 0, 0, 0,
 		hWnd, reinterpret_cast<HMENU>(ID_PATHEDIT), NULL, NULL);
-	entryListView = std::make_unique<ListViewEx>(hWnd, reinterpret_cast<HMENU>(ID_ENTRYLISTVIEW));
+	entryListView = std::make_unique<ListViewEx>(hWnd, reinterpret_cast<HMENU>(ID_ENTRYLISTVIEW), nullptr);
 
 	// ƒtƒ@ƒCƒ‹–¼
 	ListViewExColumn column;
